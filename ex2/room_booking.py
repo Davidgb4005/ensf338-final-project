@@ -1,6 +1,9 @@
 import LiFo_ringBuffer as lifo
 import numpy as np
 
+def time_str_to_float(t):
+    h, m = map(int, t.split(":"))
+    return h + m / 60  # 12:30 → 12.5, 13:00 → 13.0
 class user_booking:
     def __init__(self,user_id,name,time,comments):
         self.id = user_id
@@ -47,8 +50,39 @@ class booking_system:
             print("The System Can Only Book ",self.buffer.capacity," Days In The Future")
             return None
         buffer_cell:daily_booking = self.buffer.access_at_index(day)
-        buffer_cell.add_booking(user_booking)
+        return buffer_cell.add_booking(user_booking)
+    
+    def delete_booking(self,day,user_booking:user_booking):
+        buffer_cell:daily_booking = self.buffer.access_at_index(day)
+        return buffer_cell.remove_booking(user_booking)
+    
+    def get_daily_booking(self,day,start_time:float = 0.0,end_time:float = 24.0):
+        if start_time == None:
+            start_time = 0.0
+        else:
+            start_time = time_str_to_float(start_time)
+        if end_time == None:
+            end_time = 24.0
+        else:
+            end_time = time_str_to_float(end_time)
+
+        buffer_cell:daily_booking = self.buffer.access_at_index(day)
+        all_bookings = buffer_cell.get_all_bookings()
+        return_val = []
+        for i in range((int)(np.round(start_time*2)),(int)(np.round(end_time*2))):
+            if type(all_bookings[i]) == user_booking:
+                return_val.append(all_bookings[i])
+                print("Day : ",day," - Time :",all_bookings[i].time," Is Booked By : ",all_bookings[i].name,)
+            else:
+                return_val.append(user_booking(None,None,i/2,""))
+                print("Day : ",day," - Time :",i/2, " Is Open")
+                pass
+        return return_val
     def print_daily_booking(self,day,start_time:float = 0.0,end_time:float = 24.0):
+        if start_time == None:
+            start_time = 0.0
+        if end_time == None:
+            end_time = 24.0
         buffer_cell:daily_booking = self.buffer.access_at_index(day)
         all_bookings = buffer_cell.get_all_bookings()
         for i in range((int)(np.round(start_time*2)),(int)(np.round(end_time*2))):
@@ -59,7 +93,7 @@ class booking_system:
                 pass
 
 
-if True:
+if False:
     test_bookingSystem = booking_system(90)
 
     test_booking = user_booking(535,"TEST", 12.5,"Dummy Comment")
