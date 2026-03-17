@@ -14,6 +14,11 @@ class node:
         self.y = y
         self.name = name
         self.linked_nodes = []
+    def print_info(self):
+        print("Name : ",self.name," - ID : ",self.id)
+    def print_linked_nodes(self):
+        for i in self.linked_nodes:
+            print(self.name," Linked To : ",i.name)
 
 
 def get_node_vector(origin_node: node, target_node: node):
@@ -90,24 +95,28 @@ class graph:
 
 g = graph()
 g.append_node(node("A", 0, 0))
-g.append_node(node("B", 10, 0))
-g.append_node(node("C", 0, 1))
+g.append_node(node("B", 10, 1))
+g.append_node(node("C", 0, 10))
+g.append_node(node("D", 5, 9))
+g.append_node(node("E", 4, 7))
+g.append_node(node("F", 9, 17))
+g.append_node(node("G", 5, 6))
+g.append_node(node("H", 22, 21))
 
-g.append_node(node("D", 2, 1))
+g.node_linker(0, [1,3,4])   # A -> B, A -> C
+g.node_linker(1, [3,4,5,6])      # B -> D
+g.node_linker(2, [3,4,7])      # C -> D
 
-g.node_linker(0, [1, 2])   # A -> B, A -> C
-g.node_linker(1, [3])      # B -> D
-g.node_linker(2, [3])      # C -> D
+for i in g.nodes:
+    i.print_linked_nodes()
 
-
-
-path = g.find_path(0, 3)
+path = g.find_path(0, 0)
 if True: 
     path = g.find_path(0, 2)
     path = g.find_path(0, 1)
     path = g.find_path(0, 1)
     path = g.find_path(0, 1)
-    path = g.find_path(0, 0)
+    path = g.find_path(0, 7)
 #print(g.undo_buffer.peak())
 while g.undo_buffer.items > 0:
     print([n.name for n in g.undo_buffer.pop()])  # ['A', 'C', 'D']
