@@ -1,6 +1,3 @@
-'''This is the implementaion for the undo feature used in the traversal
-This implementaion can only store 1 type of data'''
-
 
 class ring_buffer:
     def __init__(self,capacity,data_type):

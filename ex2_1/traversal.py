@@ -1,7 +1,7 @@
 import numpy as np
 import heapq  ## THIS NEEDS OT BE A PYTHON IMPLEMENTAION
 import itertools
-import LiFo_ringBuffer as LiFo_ringBuffer
+import DataStructures.LiFo_ringBuffer as LiFo
 class node:
     x = 0
     y = 0
@@ -39,7 +39,7 @@ class graph:
         self.nodes = []       
         self.id_name_pair = {}
         self.total_nodes = 0
-        self.undo_buffer = LiFo_ringBuffer.ring_buffer(10,list)
+        self.undo_buffer = LiFo.ring_buffer(10,list)
 
     def append_node(self, n: node):
         n.id = self.total_nodes

@@ -1,12 +1,8 @@
-'''This is the implementaion for the undo feature used in the traversal
-This implementaion can only store 1 type of data'''
-
-
 class ring_buffer:
     capacity= 0
     items = 0
-    head_index = 0
-    tail_index = 0
+    read_index = -1
+    write_index = 0
     data_type = None
     buffer = []
     def __init__(self,capacity,data_type):
@@ -21,24 +17,33 @@ class ring_buffer:
     def append_buffer(self,data):
         if self.items < self.capacity:
             self.items += 1 
-        self.head_index += 1
-        self.head_index %= self.capacity
-        self.buffer[self.index] = data
+
+        self.buffer[self.write_index] = data
+        self.write_index += 1
+        self.write_index %= self.capacity 
 
     def pop(self):
         if self.items>0:
-            return_value = self.buffer[self.index]
             self.items -= 1
-            self.tail_index += 1
-            self.tail_index %= self.capacity
+            self.read_index += 1
+            self.read_index %= self.capacity
+            return_value = self.buffer[self.read_index]
             return(return_value)
         else:
             return None
 
     def peak(self):
         if self.items>0:
-            return(self.buffer[self.tail_index])
+            return(self.buffer[self.read_index])
         else:
             return None
         
         
+    def read_at_index(self,index):
+        if index > self.capacity:
+            return None
+        return self.buffer[(self.write_index + index )% self.capacity]
+    def write_at_index(self,index):
+        if index > self.capacity:
+            return None
+        return self.buffer[(self.write_index + index )% self.capacity]
