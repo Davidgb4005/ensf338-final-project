@@ -1,4 +1,4 @@
-import LiFo_ringBuffer as lifo
+import DataStructures.LiFo_ringBuffer as lifo
 import numpy as np
 
 def time_str_to_float(t):

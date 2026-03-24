@@ -1,9 +1,9 @@
-import FiFo_ringBuffer as fifo
-import LiFo_ringBuffer as lifo
-import room_booking as rb
-import traversal as tv
+import DataStructures.FiFo_ringBuffer as fifo
+import DataStructures.LiFo_ringBuffer as lifo
+import ex2_3.room_booking as rb
+import ex2_1.traversal as tv
 import random as rd
-import request_pipeline as rp
+import ex2_6.request_pipeline as rp
 path_way_graph = tv.graph()
 
 
@@ -31,12 +31,15 @@ class Building: #Provided By Asssignment
         self.location = location # (lat, lon) or grid coords
         self.floors = [] # room_id -> Room
 
-def find_room(floor : Floor,room_number) -> Room:
-    room_number = (int)(room_number)
-    return floor.rooms[room_number]
+#Building Helping Functions
 def find_floor(building:Building,floor_number) -> Floor:
     floor_number = (int)(floor_number)
     return building.floors[floor_number]
+#Floor Helper Funcitons
+def find_room(floor : Floor,room_number) -> Room:
+    room_number = (int)(room_number)
+    return floor.rooms[room_number]
+#Campus Helper Functions    
 def find_building(campus:Campus,building_name:str= None,building_id:int = None) -> Building:
     if building_id != None:
         return campus.buildings.values(building_id)

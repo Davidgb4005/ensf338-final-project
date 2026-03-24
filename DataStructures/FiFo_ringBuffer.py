@@ -1,7 +1,3 @@
-'''This is the implementaion for the undo feature used in the traversal
-This implementaion can only store 1 type of data'''
-
-
 class ring_buffer:
     capacity= 0
     items = 0

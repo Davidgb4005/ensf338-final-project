@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
 import random as rd
-import main
-import room_booking
-import request_pipeline as rp
+import GlobalObjects.objects as objects
+import ex2_3.room_booking as room_booking
+import ex2_6.request_pipeline as rp
 import threading
 import time
 #Globals
@@ -19,20 +19,20 @@ floor_list = []
 floor_count = 15
 room_count = 40
 for k in range(building_count):
-    building_list[building_name_list[k]] = (main.Building(k,building_name_list[k],building_name_list[k],[0,0]))
+    building_list[building_name_list[k]] = (objects.Building(k,building_name_list[k],building_name_list[k],[0,0]))
     for j in range(floor_count):
-        building_list[building_name_list[k]].floors.append(main.Floor())
-        floor_list.append(main.Floor())
+        building_list[building_name_list[k]].floors.append(objects.Floor())
+        floor_list.append(objects.Floor())
         for i in range(room_count):
-            building_list[building_name_list[k]].floors[j].rooms.append(main.Room(rd.randint(0,30),room_types[rd.randint(0,len(room_types)-1)]))
+            building_list[building_name_list[k]].floors[j].rooms.append(objects.Room(rd.randint(0,30),room_types[rd.randint(0,len(room_types)-1)]))
 for i in (building_list):
     print(i)
-campus = main.Campus()
+campus = objects.Campus()
 campus.buildings = dict(building_list)
 
 
 
-return_val = main.room_finder(campus,4,23,building_name="ENG")
+return_val = objects.room_finder(campus,4,23,building_name="ENG")
 test_bookingSystem = return_val[2].bookings
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ def search_rooms(building, floor, room,day, start, end):
         room = (int)(room)
     day = (int)(day)
     print(building,floor,room)
-    result = main.room_finder(campus,floor_number=floor,room_number=room,building_name=building)
+    result = objects.room_finder(campus,floor_number=floor,room_number=room,building_name=building)
     print(day,start,end)
     if result[2] is not None:
         result = result[2].bookings.get_daily_booking(day, start, end)
@@ -70,7 +70,7 @@ def delete_booking(building, floor, room,day, start, end):
         room = (int)(room)
     day = (int)(day)
     print(building,floor,room)
-    result = main.room_finder(campus,floor_number=floor,room_number=room,building_name=building)
+    result = objects.room_finder(campus,floor_number=floor,room_number=room,building_name=building)
     print(day,start,end)
     if result[2] is not None:
         result = result[2].bookings.get_daily_booking(day, start, end)
@@ -285,7 +285,7 @@ class RoomLookupPage(tk.Frame):
 
         # Clear table
         print(vals)
-        results = main.room_finder(campus,floor,room,building)
+        results = objects.room_finder(campus,floor,room,building)
         temp_user_booking = room_booking.user_booking(rd.randint(0,10),"A dummy name",(float)(vals[0]),"Dummy Comments")
         def book_closure(self,fn):
             fn()
@@ -330,7 +330,7 @@ class RoomLookupPage(tk.Frame):
 
         # Clear table
         print(vals)
-        results = main.room_finder(campus,floor,room,building)
+        results = objects.room_finder(campus,floor,room,building)
         global single_block
         def delete_closure(self,FN):
             FN()

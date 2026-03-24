@@ -1,4 +1,4 @@
-import FiFo_ringBuffer as fifo
+import DataStructures.FiFo_ringBuffer as fifo
 
 class request_pipeline:
     def __init__(self):
