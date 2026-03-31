@@ -3,36 +3,46 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import DataStructures.FiFo_ringBuffer as fifo
 import DataStructures.LiFo_ringBuffer as lifo
-import ex2_3.room_booking as rb
-import ex2_1.traversal as tv
 import random as rd
-import ex2_6.request_pipeline as rpx
-path_way_graph = tv.graph()
 
 
 class Campus:
     def __init__(self):
-        self.buildings = {} # building_id -> Building
+        self.buildings = [Building] # building_id -> Building
         self.pathways = ... # your chosen network representationV
 
+
+    def get_room_list(self):
+        pass
+    def get_floor_list(self):
+        pass
+    def get_building_list(self):
+        pass
+    
+    def get_bookings(self,building_id,floor_id,room_id):
+        return self.buildings[building_id].floors[floor_id].rooms[room_id].bookings
+
 class Room: #Provided By Assignemnt
-    def __init__(self, capacity: int, room_type: str,split_room :list = None):
-        self.capacity = capacity # max occupancy
-        self.room_type = room_type # "lecture", "lab", "office"
-        self.bookings = rb.booking_system(30) # list of Booking objects
-        self.split_room = split_room
+    def __init__(self):
+        self.bookings = None
+        self.info = "Blank"
 
 class Floor:
     def __init__(self):
-        self.rooms = []
+        self.rooms = [Room]
+class Location:
+    def __init__(self,x_position,y_position):
+        self.x_position = x_position
+        self.y_position = y_position
 
-class Building: #Provided By Asssignment
-    def __init__(self, building_id : int,building_name: str, name: str, location: tuple):
+class Building:
+    def __init__(self, building_id : int,building_name: str, name: str, location: Location):
         self.building_id = building_id # e.g. unique ID
         self.building_name = building_name.lower() #e.g. "ICT"
         self.name = name # "Information and Comm. Tech."
         self.location = location # (lat, lon) or grid coords
-        self.floors = [] # room_id -> Room
+        self.floors = [Floor] # room_id -> Room
+    
 
 #Building Helping Functions
 def find_floor(building:Building,floor_number) -> Floor:

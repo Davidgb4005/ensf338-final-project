@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-class ring_buffer:
+class LifoRingBuffer:
     def __init__(self,capacity,data_type):
         self.buffer = []
         self.data_type = None
@@ -13,7 +13,7 @@ class ring_buffer:
         self.items = 0
         pass
 
-    def append_buffer(self,data):
+    def append(self,data):
         if self.items < self.capacity:
             self.items += 1 
         self.index += 1

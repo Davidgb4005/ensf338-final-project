@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import tkinter as tk
 from tkinter import ttk
 import random as rd
@@ -287,11 +291,11 @@ class RoomLookupPage(tk.Frame):
         print(vals)
         results = objects.room_finder(campus,floor,room,building)
         temp_user_booking = room_booking.user_booking(rd.randint(0,10),"A dummy name",(float)(vals[0]),"Dummy Comments")
-        def book_closure(self,fn):
-            fn()
+        def book_closure(self,FN):
+            FN()
             self._search()
         if single_block:
-            request_pipeline.enque_function(lambda:book_closure(self,lambda:results[2].bookings.book_room(day,temp_user_booking.id,temp_user_booking.name,temp_user_booking.time,temp_user_booking.comments)))
+            request_pipeline.enque_function(lambda:book_closure(self,lambda:results[2].bookings.book_room(day,temp_user_booking.id,temp_user_booking.name,temp_user_booking.time,temp_user_booking.comments)),floor,room,building,"Book Room")
         else:
             result = results[2].bookings.book_room(day,temp_user_booking.id,temp_user_booking.name,temp_user_booking.time,temp_user_booking.comments)
             self._search()
@@ -309,6 +313,8 @@ class RoomLookupPage(tk.Frame):
         floor    = self.floor_var.get().strip() or None
         room     = self.room_var.get().strip() or None
 
+        results = objects.room_finder(campus,floor,room,building)
+        temp_user_booking = room_booking.user_booking(rd.randint(0,10),"A dummy name",(float)(vals[0]),"Dummy Comments")
         # Validate required fields
         if building is None:
             self.feedback.config(text="Building Name is required.")
@@ -337,7 +343,7 @@ class RoomLookupPage(tk.Frame):
             self._search()
 
         if single_block:
-            request_pipeline.enque_function(lambda:delete_closure(self,lambda:results[2].bookings.delete_booking(day,(float)(vals[0]))))
+            request_pipeline.enque_function(lambda:delete_closure(self,lambda:results[2].bookings.book_room(day,temp_user_booking.id,temp_user_booking.name,temp_user_booking.time,temp_user_booking.comments)),floor,room,building,"Delete Booking")
         else:
             result = results[2].bookings.delete_booking(day,(float)(vals[0]))
             self._search()
@@ -400,13 +406,18 @@ class PendingRequestsPage(tk.Frame):
         table_frame = tk.Frame(self)
         table_frame.pack(fill="both", expand=True, padx=12, pady=(0, 8))
 
-        self.tree = ttk.Treeview(table_frame, columns=("#", "Caller"),
+        self.tree = ttk.Treeview(table_frame, columns=("#", "room","floor","building","operation"),
                                  show="headings", selectmode="browse")
         self.tree.heading("#", text="#")
-        self.tree.heading("Caller", text="Caller")
+        self.tree.heading("room", text="room")
+        self.tree.heading("floor", text="floor")
+        self.tree.heading("building", text="building")
+        self.tree.heading("operation", text="operation")
         self.tree.column("#", width=60, anchor="center")
-        self.tree.column("Caller", width=200, anchor="center")
-
+        self.tree.column("room", width=100, anchor="center")
+        self.tree.column("floor", width=100, anchor="center")
+        self.tree.column("building", width=100, anchor="center")
+        self.tree.column("operation", width=100, anchor="center")
         vsb = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
         self.tree.pack(side="left", fill="both", expand=True)
@@ -417,10 +428,12 @@ class PendingRequestsPage(tk.Frame):
         for row in self.tree.get_children():
             self.tree.delete(row)
         for i in range(request_pipeline.buffer.items):
-            self.tree.insert("", "end", values=(request_pipeline.buffer.items-i, "Unknown"))
+            self.tree.insert("", "end", values=(request_pipeline.buffer.items-i, request_pipeline.buffer.buffer[i].floor,request_pipeline.buffer.buffer[i].room,request_pipeline.buffer.buffer[i].building,request_pipeline.buffer.buffer[i].operation))            
         self.tree.pack(side="left", fill="both", expand=True)
-        self.tree.column("#", width=60, anchor="center")
-        self.tree.column("Caller", width=200, anchor="center")
+        self.tree.column("room", width=100, anchor="center")
+        self.tree.column("floor", width=100, anchor="center")
+        self.tree.column("building", width=100, anchor="center")
+        self.tree.column("operation", width=100, anchor="center")
         self.feedback.config(text=f"{request_pipeline.buffer.items} item(s) in queue.")
 
     def _process_next(self):

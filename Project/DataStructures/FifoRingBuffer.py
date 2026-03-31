@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-class ring_buffer:
+class FifoRingBuffer:
     capacity= 0
     items = 0
     read_index = -1
