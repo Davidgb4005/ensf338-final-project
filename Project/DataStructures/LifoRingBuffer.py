@@ -4,11 +4,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 class LifoRingBuffer:
     def __init__(self,capacity,data_type):
         self.buffer = []
-        self.data_type = None
         self.data_type = data_type
         self.capacity = capacity
-        for i in range(capacity):
-            self.buffer.append(data_type())
+        if self.data_type != None:
+            for i in range(capacity):
+                self.buffer.append(data_type())
+        else:
+            for i in range(capacity):
+                self.buffer.append(None)
         self.index = capacity
         self.items = 0
         pass

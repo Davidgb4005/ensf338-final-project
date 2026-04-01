@@ -8,9 +8,10 @@ from DataStructures import Deque as dq
 import threading
 import time
 class request_lambda_wrapper:
-    def __init__(self ,position,function ,request_data):
+    def __init__(self ,position,function,refresh ,request_data):
         self.position = position
         self.function = function
+        self.refresh = refresh
         self.request_data = request_data
 
 
@@ -20,60 +21,27 @@ class request_pipeline:
         self.position_index = 1
         self.auto_service = 0 
     
-    def enque_request(self,function,request_data):
-        new_lambda = request_lambda_wrapper(self.position_index,function,request_data)
+    def enque_request(self,function,refresh,request_data):
+        new_lambda = request_lambda_wrapper(self.position_index,function,refresh,request_data)
         self.position_index += 1
         self.buffer.append_tail(new_lambda)
 
-    def toggle_single_block(self):
-        self.auto_service = (self.auto_service + 1) % 3
-        match self.auto_service:
-            case 1:
-                print("Request Pipeline in Auto")
-            case 0:
-                print("Request Pipeline in Slow Mode")
-            case 2:
-                print("Request Pipeline in Disabled")
     def deque_request(self):
         current_requet = self.buffer.pop_head()
-        if current_requet != None:
+        if current_requet.function != None:
             current_requet.function()
-            print(current_requet.request_data)
+        if current_requet.refresh() != None:
+            current_requet.refresh()
+        print(current_requet.request_data)
 
-pipeline_init = False
-thread_handle = threading.Event()
-global_refresh = None
-rp = request_pipeline()
-def get_request_pipeline():
-    global pipeline_init,rp
-    if pipeline_init == False:
-        pipeline_init = True
-    return rp
 
-def auto_handle_request():
-    global thread_handle,global_refresh
-    rp = get_request_pipeline()
-    prev_len = 0
-    while not thread_handle.is_set():
-        if rp.auto_service == 1 and rp.buffer.get_len()>0:
-            rp.deque_request()
-        elif rp.auto_service == 0:
-            rp.deque_request()
-            if global_refresh != None:
-                global_refresh()
-            time.sleep(2)
-        else:
-            if global_refresh != None and rp.buffer.get_len() != prev_len:
-                prev_len = rp.buffer.get_len()
-                global_refresh()
+
 
 
 
 
 def refresh_closure(fn,refresh):
-    if fn != None:
         fn()
-    if refresh != None and (rp.toggle_single_block() != 1 or rp.buffer.get_len()==0):
         refresh()
 
 
@@ -136,18 +104,3 @@ def open_request_pipeline_window():
     build(root,rp)
     root.mainloop()
 
-def start_thread():
-    thread_handle.clear()
-    t = threading.Thread(target=lambda:auto_handle_request())
-    t.start()
-
-def kill_pipeline_thread():
-    global thread_handle
-    print("Killing pipelineThread")
-    thread_handle.set()
-
-if __name__ == "__main__":
-
-    rp = get_request_pipeline()
-    rp.start_request_pipeline()
-    open_request_pipeline_window()

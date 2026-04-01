@@ -62,13 +62,13 @@ class Deque:
         if not self.head:
             print("peek from empty deque")
             return None
-        return self.head.val
+        return self.head
 
     def peek_tail(self):
         if not self.tail:
             print("peek from empty deque")
             return None
-        return self.tail.val
+        return self.tail
 
     def get_len(self):
         return self.len
