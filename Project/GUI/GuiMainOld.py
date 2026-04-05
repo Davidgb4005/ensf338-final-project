@@ -13,6 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import GlobalObjects.objects as obj
 import RequestPipeline.request_pipeline as rp
 import NavigationSystem.traversal as tv
+import BookingSystem.room_booking as rb
 
 root = tk.Tk()
 root.geometry("600x400")
@@ -130,15 +131,26 @@ def build_booking_page(parent):
             selected_start = time_str_to_index(start_var.get())
 
         table.delete(*table.get_children())
+        if campus.get_bookings(selected_building,selected_floor,selected_room,selected_day,selected_start,selected_end) == None:
+            mb.showinfo("Display Error","Room Is Deleted, Reinitizle in edit page")
+            return
         for booking in campus.get_bookings(selected_building,selected_floor,selected_room,selected_day,selected_start,selected_end):
             table.insert("", "end", values=(booking.booking_type, booking.booker_name, booking.start_time, booking.end_time))           
 
     def building_info(*args):
         selected_building = building_var.get()
-        campus.get_buildings(selected_building)
-        mb.showinfo("Building Info", f"Dates Have Cannot Be More Than 90 Days In The Future")
+        building = campus.get_buildings()[selected_building]
+        mb.showinfo("Building Info", building.get_info())
     def room_info(*args):
-        pass
+        selected_building = building_var.get()
+        selected_floor = floor_var.get()
+        selected_room = room_var.get()
+        try:
+            room = campus.get_buildings()[selected_building].floors[int(selected_floor)].rooms[int(selected_room)]
+            mb.showinfo("Room Info",room.get_info())
+        except ValueError:
+            mb.showinfo("Data Error","Please Select A Building, Floor And Room")
+
     building_var = tk.StringVar(value="Building")
     building_var.trace_add("write", refresh_floor_dd)
     building_dd =tk.OptionMenu(dd_frame, building_var, *campus.get_building_keys())
@@ -246,6 +258,12 @@ def build_booking_page(parent):
         print("Add:", vals)
 
     def delete_booking():
+        selected_building = building_var.get()
+        selected_floor = floor_var.get()
+        selected_room = room_var.get()
+        selected_start = start_var.get()
+        selected_end = end_var.get()
+        selected_day = refresh_date()
         selected = table.focus()
         if not(selected):
             mb.showinfo("Booking Error", f"Please Select A Valid Time Slot")
@@ -257,13 +275,312 @@ def build_booking_page(parent):
         if selected:
             vals = table.item(selected, "values")
             print("Delete:", vals)
+        booking = campus.get_bookings(selected_building,selected_floor,selected_room,selected_day,time_str_to_index(vals[2]),time_str_to_index(vals[3]))[0]
+        request_pipeline.enque_request(lambda:booking.update_booking(None,"Vacant"),lambda:refresh_table(),"Add Booking")
+
+        
+
+    def add_service():
+        selected_building = building_var.get()
+        if selected_building == "Building" or selected_building == None :
+            mb.showinfo("Booking Error", f"Please Select A Building")
+            return
+        
+        def open_popup():
+            popup = tk.Toplevel()
+            
+            tk.Label(popup, text="Service Name").pack()
+            entry1 = tk.Entry(popup)
+            entry1.pack()
+
+            values = [None]*2
+            def submit():
+                values[0] = entry1.get() 
+                popup.destroy()
+
+            tk.Button(popup, text="Submit", command=submit).pack()
+            popup.wait_window()
+            return values
+
+        values = open_popup()
+        if values[0] == "" or values[0] == None :
+            mb.showinfo("Booking Error", f"Please Insert A Name And Booking Type")
+            return
+        campus.add_serivce(values[0],selected_building)
+        #func = lambda:campus.add_serivce(values[0],selected_building)
+        #request_pipeline.enque_request(func,lambda:refresh_table(),"Add Service")
+        print("Add:", values[0])
+
+    def delete_service():
+        selected_building = building_var.get()
+        if selected_building == "Building" or selected_building == None :
+            mb.showinfo("Booking Error", f"Please Select A Building")
+            return
+        
+        def open_popup():
+            popup = tk.Toplevel()
+            
+            tk.Label(popup, text="Service Name").pack()
+            entry1 = tk.Entry(popup)
+            entry1.pack()
+
+            values = [None]*2
+            def submit():
+                values[0] = entry1.get() 
+                popup.destroy()
+
+            tk.Button(popup, text="Submit", command=submit).pack()
+            popup.wait_window()
+            return values
+
+        values = open_popup()
+        if values[0] == "" or values[0] == None :
+            mb.showinfo("Service Error", f"Please Insert Service Name")
+            return
+        campus.delete_service(values[0],selected_building)
+        #func = lambda:campus.delete_service(values[0],selected_building)
+        #request_pipeline.enque_request(func,lambda:refresh_table(),"Delete Service")
+        print("Delete Service:", values[0])
+
+
+    def add_service():
+        selected_building = building_var.get()
+        if selected_building == "Building" or selected_building == None :
+            mb.showinfo("Booking Error", f"Please Select A Building")
+            return
+        
+        def open_popup():
+            popup = tk.Toplevel()
+            
+            tk.Label(popup, text="Service Name").pack()
+            entry1 = tk.Entry(popup)
+            entry1.pack()
+
+            values = [None]*2
+            def submit():
+                values[0] = entry1.get() 
+                popup.destroy()
+
+            tk.Button(popup, text="Submit", command=submit).pack()
+            popup.wait_window()
+            return values
+
+        values = open_popup()
+        if values[0] == "" or values[0] == None :
+            mb.showinfo("Booking Error", f"Please Insert A Name And Booking Type")
+            return
+        campus.add_serivce(values[0],selected_building)
+        #func = lambda:campus.add_serivce(values[0],selected_building)
+        #request_pipeline.enque_request(func,lambda:refresh_table(),"Add Service")
+        print("Add:", values[0])
+
+    def delete_service():
+        selected_building = building_var.get()
+        if selected_building == "Building" or selected_building == None :
+            mb.showinfo("Booking Error", f"Please Select A Building")
+            return
+        
+        def open_popup():
+            popup = tk.Toplevel()
+            
+            tk.Label(popup, text="Service Name").pack()
+            entry1 = tk.Entry(popup)
+            entry1.pack()
+
+            values = [None]*1
+            def submit():
+                values[0] = entry1.get() 
+                popup.destroy()
+
+            tk.Button(popup, text="Submit", command=submit).pack()
+            popup.wait_window()
+            return values
+
+        values = open_popup()
+        if values[0] == "" or values[0] == None :
+            mb.showinfo("Service Error", f"Please Insert Service Name")
+            return
+        campus.delete_service(values[0],selected_building)
+        #func = lambda:campus.delete_service(values[0],selected_building)
+        #request_pipeline.enque_request(func,lambda:refresh_table(),"Delete Service")
+        print("Delete Service:", values[0])
+
+    def add_building():
+
+        def open_popup():
+            popup = tk.Toplevel()
+            
+            tk.Label(popup, text="Building Name(Eg: Eng A Block)").pack()
+            entry1 = tk.Entry(popup)
+            entry1.pack()
+            tk.Label(popup, text="Building Id(Eg: ENA)").pack()
+            entry2 = tk.Entry(popup)
+            entry2.pack()
+            tk.Label(popup, text="Floors").pack()
+            entry3 = tk.Entry(popup)
+            entry3.pack()
+            tk.Label(popup, text="Rooms Per Floor").pack()
+            entry4 = tk.Entry(popup)
+            entry4.pack()
+
+
+            values = [None]*4
+        
+            def submit():
+                values[0] = entry1.get() 
+                values[1] = entry2.get() 
+                values[2] = entry3.get() 
+                values[3] = entry4.get() 
+                popup.destroy()
+                    
+            tk.Button(popup, text="Submit", command=submit).pack()
+            popup.wait_window()
+            return values
+                
+        values = open_popup()
+        for  i in values:
+            if i == None or i == "":
+                mb.showinfo("Add Building Error", f"Please Fill in all Fields")
+        new_building = obj.Building(values[0],values[1],obj.Location(0,0))
+        campus.add_building(int(values[2]),int(values[3]),new_building)
+        generate_pages()
+        show_room_booking()
+        return values
+        
+    def delete_building():
+       
+        selected_building = building_var.get()
+        deleted_building = campus.get_buildings()[selected_building]
+        campus.remove_building(deleted_building)
+        #func = lambda:campus.delete_service(values[0],selected_building)
+        #request_pipeline.enque_request(func,lambda:refresh_table(),"Delete Service")
+        print("deleted building:", deleted_building)
+        generate_pages()
+        show_room_booking()
+
+
+
+    def append_room():
+        selected_building = building_var.get()
+        selected_floor = floor_var.get()
+        if selected_floor == "Floor" or selected_building == "Building":
+            mb.showinfo("Add Room Error, Please Select Floor and Building")
+            return
+        def open_popup():
+            popup = tk.Toplevel()
+            
+
+            tk.Label(popup, text="Info").pack()
+            entry2 = tk.Entry(popup)
+            entry2.pack()
+            tk.Label(popup, text="Type").pack()
+            entry3 = tk.Entry(popup)
+            entry3.pack()
+
+
+
+            values = [None]*2
+        
+            def submit(): 
+                values[0] = entry2.get() 
+                values[1] = entry3.get() 
+                popup.destroy()
+                    
+            tk.Button(popup, text="Submit", command=submit).pack()
+            popup.wait_window()
+            return values
+                
+        values = open_popup()
+        for  i in values:
+            if i == None or i == "":
+                mb.showinfo("Add Room Error", f"Please Fill in all Fields")
+                return
+        id = len(campus.get_buildings()[selected_building].floors[int(selected_floor)].rooms)
+        new_room = obj.Room(id,values[1])
+        new_room.info = values[0]
+        campus.get_buildings()[selected_building].floors[int(selected_floor)].rooms.append(new_room)
+        refresh_room_dd()
+        return values
+        
+    def delete_room():
+        selected_building = building_var.get()
+        selected_floor = floor_var.get()
+        selected_room = room_var.get()
+        deleted_room = campus.get_buildings()[selected_building].floors[int(selected_floor)].rooms[int(selected_room)]
+
+        deleted_room.booking = None
+        deleted_room.room_type = None
+        deleted_room.room_type = None
+        #func = lambda:campus.delete_service(values[0],selected_building)
+        #request_pipeline.enque_request(func,lambda:refresh_table(),"Delete Service")
+        print("Delete Room:", deleted_room)
+        refresh_room_dd()
+
+    def edit_room():
+        selected_building = building_var.get()
+        selected_floor = floor_var.get()
+        if selected_floor == "Floor" or selected_building == "Building":
+            mb.showinfo("Add Room Error, Please Select Floor and Building")
+            return
+        def open_popup():
+            popup = tk.Toplevel()
+            room = campus.get_buildings()[selected_building].floors[int(selected_floor)].rooms[int(room_var.get())]
+            
+            tk.Label(popup, text="Info").pack()
+            entry2 = tk.Entry(popup)
+            if room.info != None:
+                entry2.insert(0, room.info)
+            entry2.pack()
+            
+            tk.Label(popup, text="Type").pack()
+            entry3 = tk.Entry(popup)
+            if room.room_type != None:
+                entry3.insert(0, room.room_type)
+            entry3.pack()
+            
+            tk.Label(popup, text="Reinitialize Room Bookings").pack()
+            reinit_var = tk.BooleanVar(value=False)        
+            cb = tk.Checkbutton(popup, variable=reinit_var)  
+            cb.pack()
+            
+            values = [None] * 3
+
+            def submit():
+                values[0] = entry2.get()
+                values[1] = entry3.get()
+                values[2] = reinit_var.get()  # ← was values[3], out of range on a size-3 list
+                popup.destroy()
+
+            tk.Button(popup, text="Submit", command=submit).pack()
+            popup.wait_window()
+            return values
+                
+        values = open_popup()
+        for  i in values:
+            if i == None or i == "":
+                mb.showinfo("Add Room Error", f"Please Fill in all Fields")
+                return
+
+        room = campus.get_buildings()[selected_building].floors[int(selected_floor)].rooms[int(room_var.get())]
+        room.room_type = values[1]
+        room.info = values[0]
+        if values[2]:
+            room.booking = rb.BookingSystem(90)
+        refresh_room_dd()
         refresh_table()
+        return values
 
     btn_frame = tk.Frame(page)
     btn_frame.pack(fill="x")
     tk.Button(btn_frame, text="Add Booking", command=add_booking).pack(side="left")
     tk.Button(btn_frame, text="Delete Booking", command=delete_booking).pack(side="left")
-
+    tk.Button(btn_frame, text="Add Service", command=add_service).pack(side="left")
+    tk.Button(btn_frame, text="Delete Service", command=delete_service).pack(side="left")
+    tk.Button(btn_frame, text="Add Room", command=append_room).pack(side="left")
+    tk.Button(btn_frame, text="Edit Room", command=edit_room).pack(side="left")
+    tk.Button(btn_frame, text="Delete Room", command=delete_room).pack(side="left")
+    tk.Button(btn_frame, text="Add Building", command=add_building).pack(side="left")
+    tk.Button(btn_frame, text="Delete Building", command=delete_building).pack(side="left")
     return page
 
 
@@ -298,7 +615,7 @@ def build_nav_page(parent):
 
     def undo():
         undo_closure = lambda : campus.campus_graph.undo()
-        request_pipeline.enque_request(undo_closure,lambda:None,"Navigation Undo Enqueing")
+        request_pipeline.enque_request(undo_closure,lambda:None,"Navigation Undo DeQueing")
         
     def animate():
 

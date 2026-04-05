@@ -16,6 +16,8 @@ class Room:
         self.room_type = room_type
     def edit_booking(self,booking,info):
         pass
+    def get_info(self):
+        return f"Room :{self.id} is of type {self.room_type}. Additional Info: {self.info}"
 
  
 class Floor:
@@ -36,12 +38,12 @@ class Building:
         self.bid = bid
         self.floors = []
         self.node = tv.node(bid,location.x_position,location.y_position)
-        self.services = None
+        self.services = []
+    def get_info(self):
+        return f"Building Name:{self.name} - ID:{self.bid}. Has {len(self.floors)} Floors With Avaiable Serives {self.services}"
+        
  
-class Service:
-    def __init__(self, name, buildings):
-        self.name = name
-        self.buildings = buildings
+
  
 class Pathway:
     def __init__(self,id,location:Location):
@@ -51,7 +53,7 @@ class Campus:
     def __init__(self):
         self.buildings = {str: Building}
         self.pathways = None
-        self.services = {str: Service}
+        self.services = {str: []}
         self.init_ucalgary()
         self.campus_graph = tv.graph()
         self.init_graph()
@@ -72,12 +74,48 @@ class Campus:
         return (self.buildings[building_key].floors)[int(floor_id)].rooms
     def get_bookings(self,building_key,floor_id,room_id,day,start_time,end_time):
         bookings = ((self.buildings[building_key].floors)[int(floor_id)].rooms)[int(room_id)].booking
+        if bookings == None:
+            return None
         daily_bookings = bookings.get_daily_booking(day)
         print(start_time," ",end_time)
         return daily_bookings.hourly_bookings[start_time:end_time]
     
-
+    def add_serivce(self,service,building):
+        if service not in self.services.keys():
+            self.services[service] = []
+        
+        if building not in self.services[service] and building in self.buildings.keys():
+            instance = self.get_buildings()[building]
+            self.services[service].append(instance)
+            self.buildings[building].services.append(service)
+        else:
+            print("Add Service Error")
+            return None
+        
+    def delete_service(self,service,building):
+        if service not in self.services.keys():
+            print("Service Does Not Exist")
+            return
+        print(self.services[service])
+        instance = self.get_buildings()[building]
+        self.services[service].remove(instance)
+        print(self.services[service])
+        self.buildings[building].services.remove(service)
  
+    def add_building(self,floors,rooms,building:Building):
+        for i in range(floors):
+            f = Floor(i)
+            for k in range(rooms):
+                f.rooms.append(Room(k,random.choice("Study Room")))
+            building.floors.append(f)
+        self.buildings[building.bid] = building
+
+
+
+    def remove_building(self,building:Building):
+        deleted_building = self.get_buildings()[building.bid]
+        self.buildings.pop(building.bid)
+
     def init_ucalgary(self):
 
 
@@ -252,17 +290,6 @@ class Campus:
             ("TFDL", "Taylor Family Digital Library",               688, 368),
             ("TI",   "Taylor Teaching Institute",                   639, 266),
         ]
-        self.buildings = {}
-        for bid, name, lat, lon in data:
-            b = Building(name,bid, Location(lat, lon))
-            for i in range(random.randint(2, 6)):
-                f = Floor(i)
-                for k in range(random.randint(5, 20)):
-                    f.rooms.append(Room(k,random.choice(ROOM_TYPES)))
-                b.floors.append(f)
-            self.buildings[bid] = b
-
-    
 
         services_data = [
             ("Cafe",            ["MH", "TFDL", "HNSC", "ICT", "SH"]),
@@ -278,10 +305,18 @@ class Campus:
             ("Bike Racks",      ["ICT", "BI", "ES", "KNA", "SS"]),
             ("Parking",         ["AB", "MSC", "OO", "KNA"]),
         ]
+        self.buildings = {}
+        for bid, name, lat, lon in data:
+            new_building = Building(name,bid,Location(lat,lon))
+            self.add_building(random.randint(2, 6),random.randint(5, 20),new_building)
+            #self.buildings[bid] = b
+
+    
+
 
         self.services = {}
         for sname, bids in services_data:
-            self.services[sname] = Service(sname, [self.buildings[b] for b in bids])
+            self.services[sname] = [self.buildings[b] for b in bids]
 
 
     def init_graph(self):
