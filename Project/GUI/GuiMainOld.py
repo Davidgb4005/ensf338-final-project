@@ -258,6 +258,12 @@ def build_booking_page(parent):
         print("Add:", vals)
 
     def delete_booking():
+        selected_building = building_var.get()
+        selected_floor = floor_var.get()
+        selected_room = room_var.get()
+        selected_start = start_var.get()
+        selected_end = end_var.get()
+        selected_day = refresh_date()
         selected = table.focus()
         if not(selected):
             mb.showinfo("Booking Error", f"Please Select A Valid Time Slot")
@@ -269,7 +275,8 @@ def build_booking_page(parent):
         if selected:
             vals = table.item(selected, "values")
             print("Delete:", vals)
-        refresh_table()
+        booking = campus.get_bookings(selected_building,selected_floor,selected_room,selected_day,time_str_to_index(vals[2]),time_str_to_index(vals[3]))[0]
+        request_pipeline.enque_request(lambda:booking.update_booking(None,"Vacant"),lambda:refresh_table(),"Add Booking")
 
         
 
