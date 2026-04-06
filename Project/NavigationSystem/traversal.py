@@ -5,12 +5,12 @@ import matplotlib.image as mpimg
 from matplotlib.animation import FuncAnimation
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
-import heapq  ## THIS NEEDS OT BE A PYTHON IMPLEMENTAION
+from DataStructures.PriorityHeap import PriorityHeap as heapq
 import itertools
 import DataStructures.LifoRingBuffer as LiFo
 import matplotlib.cm as cm
 
-class node:
+class Node:
     x = 0
     y = 0
     id = 0
@@ -29,13 +29,13 @@ class node:
             print(self.name," Linked To : ",i.name)
 
 
-def get_node_vector(origin_node: node, target_node: node):
+def get_node_vector(origin_node: Node, target_node: Node):
     distance = np.sqrt((origin_node.x - target_node.x)**2 + (origin_node.y - target_node.y)**2)  # fix: missing **2
     angle = np.arctan2((origin_node.y - target_node.y), (origin_node.x - target_node.x)) * (180 / np.pi)
     return distance
 
 
-def link_node(node_1: node, node_2: node):
+def link_node(node_1: Node, node_2: Node):
     if node_1 == node_2 or node_1 in node_2.linked_nodes:
         print(f"Dont Try To Make Multiple Edges Between The Same Node {node_1.id} - {node_2.id}")
         return
@@ -51,7 +51,7 @@ class graph:
         self.total_nodes = 0
         self.undo_buffer = LiFo.LifoRingBuffer(10,None)
 
-    def append_node(self, n: node):
+    def append_node(self, n: Node):
         n.id = self.total_nodes
         self.nodes.append(n)              
         self.id_name_pair[n.name] = n.id   
@@ -82,10 +82,14 @@ class graph:
         came_from = {}
 
         counter = itertools.count()  
-        open_set = [(get_node_vector(start,end), next(counter), start)]  
+        open_set = heapq()
+        open_set.heapPush((get_node_vector(start,end), next(counter), start)) 
 
-        while open_set:
-            _, _, current = heapq.heappop(open_set) 
+        while not open_set.isEmpty():
+            result = open_set.heapPop()
+            if result is None:
+                break
+            _, _, current = result
             if current == end:
                 path = []
                 while current in came_from:
@@ -102,7 +106,7 @@ class graph:
                     came_from[neighbour] = current
                     g_score[neighbour] = tentative_g
                     f_score = tentative_g + get_node_vector(neighbour,end)
-                    heapq.heappush(open_set, (f_score, next(counter), neighbour))
+                    open_set.heapPush((f_score, next(counter), neighbour))
 
         return None
 
@@ -119,12 +123,16 @@ class graph:
         came_from = {}
 
         counter = itertools.count()
-        open_set = [(get_node_vector(start, end), next(counter), start)]
+        open_set = heapq()
+        open_set.heapPush((get_node_vector(start, end), next(counter), start))
 
         steps = []
 
-        while open_set:
-            f_current, _, current = heapq.heappop(open_set)
+        while not open_set.isEmpty():
+            result = open_set.heapPop()
+            if result is None:
+                break
+            _, _, current = result
 
             # compute f explicitly for clarity
             f_score_current = g_score[current] + get_node_vector(current, end)
@@ -135,7 +143,7 @@ class graph:
                 "came_from": dict(came_from),
                 "g": g_score[current],
                 "h": h_current,
-                "f": g_score[current] + h_current
+                "f": f_score_current
             })
             if current == end:
                 path = []
@@ -169,7 +177,7 @@ class graph:
                     came_from[neighbour] = current
                     g_score[neighbour] = tentative_g
                     f_score = tentative_g + get_node_vector(neighbour, end)
-                    heapq.heappush(open_set, (f_score, next(counter), neighbour))
+                    open_set.heapPush((f_score, next(counter), neighbour))
 
         return None, steps
     

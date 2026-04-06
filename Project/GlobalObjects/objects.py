@@ -4,9 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import BookingSystem.room_booking
 import random
 import NavigationSystem.traversal as tv
-
-
-
+from ServiceSystem.service_queue import ServiceRequest as requests
 
 class Room:
     def __init__(self,id,room_type):
@@ -19,14 +17,12 @@ class Room:
     def get_info(self):
         return f"Room :{self.id} is of type {self.room_type}. Additional Info: {self.info}"
 
- 
 class Floor:
 
     def __init__(self,id):
         self.rooms = []
         self.id = id
 
- 
 class Location:
     def __init__(self, x_position, y_position):
         self.x_position = x_position
@@ -41,9 +37,6 @@ class Building:
         self.services = []
     def get_info(self):
         return f"Building Name:{self.name} - ID:{self.bid}. Has {len(self.floors)} Floors With Avaiable Serives {self.services}"
-        
- 
-
  
 class Pathway:
     def __init__(self,id,location:Location):
@@ -57,6 +50,7 @@ class Campus:
         self.init_ucalgary()
         self.campus_graph = tv.graph()
         self.init_graph()
+        self.requests = requests
 
     def get_building_keys(self):
         return self.buildings.keys()
