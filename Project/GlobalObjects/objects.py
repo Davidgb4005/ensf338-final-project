@@ -33,14 +33,14 @@ class Building:
         self.name = name
         self.bid = bid
         self.floors = []
-        self.node = tv.node(bid,location.x_position,location.y_position)
+        self.node = tv.Node(bid,location.x_position,location.y_position)
         self.services = []
     def get_info(self):
         return f"Building Name:{self.name} - ID:{self.bid}. Has {len(self.floors)} Floors With Avaiable Serives {self.services}"
  
 class Pathway:
     def __init__(self,id,location:Location):
-        self.node = tv.node(id,location.x_position,location.y_position)
+        self.node = tv.Node(id,location.x_position,location.y_position)
 
 class Campus:
     def __init__(self):
@@ -303,9 +303,11 @@ class Campus:
         for bid, name, lat, lon in data:
             new_building = Building(name,bid,Location(lat,lon))
             self.add_building(random.randint(2, 6),random.randint(5, 20),new_building)
+            for service, buildings in services_data:
+                if new_building.bid in buildings:
+                    new_building.services.append(service)
             #self.buildings[bid] = b
 
-    
 
 
         self.services = {}

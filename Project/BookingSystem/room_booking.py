@@ -20,7 +20,6 @@ def helper_build_times(total_increments):
             miniutes = (hours*60) % 60
         hours = np.floor(i * splits)
         times.append(f"{int(hours):02d}:{(int)(miniutes):02d}")
-    print(times)
     return(times)
 times = helper_build_times(48)
 
