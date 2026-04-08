@@ -1,10 +1,10 @@
 import sys
 import os
+from typing import TypeVar, Iterable, Generic, Optional
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+T = TypeVar("T") #for strict type hinting
 
-#to do: make 'item' generic type for type hint requirement? might be unnecessary idk
-
-class PriorityHeap:
+class PriorityHeap(Generic[T]):
     """
     A class that implements a min heap, and can be used as a priority queue.
     . . .
@@ -27,17 +27,17 @@ class PriorityHeap:
     isEmpty()
         Returns True if heap contains no values, otherwise returns False.
     """
-    def __init__(self, data=None):
+    def __init__(self, data: Optional[Iterable[T]] = None) -> None:
         """
         Initializes a PriorityHeap object, creating an empty list initially.
         Optional 'data' arg to immediately enqueue items into the heap from, for example, a list or tuple. Individual objects work as well.
         """
-        self.tree = []
+        self.tree: list[T] = [] 
         if data:
             for x in data:
                 self.heapPush(x)
 
-    def _sort_down(self, index: int):
+    def _sort_down(self, index: int) -> None:
         """
         Private class method that finds the correct position of an item in the heap of the array.
         Checks the child value of the item, and then swap posititions if child is smaller.
@@ -50,15 +50,15 @@ class PriorityHeap:
         current = index
         leftChildIndex = 2*index + 1
         rightChildIndex = 2*index + 2
-        if leftChildIndex < n and self.tree[leftChildIndex] < self.tree[current]:
+        if leftChildIndex < n and self.tree[leftChildIndex] < self.tree[current]: # type: ignore
             current = leftChildIndex
-        if rightChildIndex < n and self.tree[rightChildIndex] < self.tree[current]:
+        if rightChildIndex < n and self.tree[rightChildIndex] < self.tree[current]: # type: ignore
             current = rightChildIndex
         if current != index:
             self.tree[index], self.tree[current] = self.tree[current], self.tree[index]
             self._sort_down(current)
 
-    def heapify(self, arr: list):
+    def heapify(self, arr: list[T]) -> None:
         """
         Gets an array and copies it to the object's tree, then sorts each value to correct position in heap.
 
@@ -69,7 +69,7 @@ class PriorityHeap:
         for i in range(len(self.tree)//2 - 1, -1, -1):
             self._sort_down(i)
     
-    def heapPush(self, item):
+    def heapPush(self, item: T) -> None:
         '''
         Enqueues an item into the min heap, and ensures heap property remains by constantly
         checking parent values until the item is in the correct position of heap.
@@ -85,9 +85,9 @@ class PriorityHeap:
                 self.tree[itemIndex], self.tree[parentIndex] = self.tree[parentIndex], self.tree[itemIndex]
                 itemIndex = parentIndex
             else:
-                return
+                return None
 
-    def heapPop(self):
+    def heapPop(self) -> None | T:
         """
         Checks if heap is empty, returning none. If not empty, then pops and returns the value at top
         of heap, and sorts the heap from the new root, if necessary.
