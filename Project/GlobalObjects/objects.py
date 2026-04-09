@@ -5,6 +5,7 @@ import BookingSystem.room_booking
 import random
 import NavigationSystem.traversal as tv
 from ServiceSystem.service_queue import ServiceRequest as requests
+from ServiceSystem.service_queue import ServiceRequest
 import DataStructures.AVL as avl
 
 BOOKING_DAYS = 30
@@ -49,14 +50,16 @@ class Pathway:
 
 class Campus:
     def __init__(self):
-        self.buildings = {str: Building}
+        self.buildings = {}
         self.pathways = None
-        self.services = {str: []}
+        self.services = {}
         self.init_ucalgary()
         self.campus_graph = tv.graph()
         self.init_graph()
         self.requests = requests
         self.lookup = avl.AVLTree()
+        self.service_queue = ServiceRequests()
+        self.completed_services = []
 
     def get_building_keys(self):
         return self.buildings.keys()
