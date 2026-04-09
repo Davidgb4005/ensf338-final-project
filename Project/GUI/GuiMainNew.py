@@ -731,34 +731,180 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
 # Page builder: Request Processing
 # ---------------------------------------------------------------------------
 
+_DEMO_REQUESTS = [
+    (1, "Emergency – Fire alarm trigger in ICT"),
+    (1, "Emergency – Medical assistance at Library"),
+    (2, "Navigate: AB → TFDL"),
+    (2, "Navigate: ICT → SH"),
+    (2, "Navigate: KNA → DC"),
+    (2, "Navigate: MFH → ENA"),
+    (2, "Navigate: BI → MH"),
+    (2, "Navigate: HNSC → OO"),
+    (2, "Navigate: CCIT → MSC"),
+    (2, "Navigate: EDC → AU"),
+    (3, "Room booking – ICT 201 for study session"),
+    (3, "Room booking – TFDL L3-12 for group project"),
+    (3, "Room booking – MS 405 for exam review"),
+    (3, "IT support ticket – projector in ICT-121 offline"),
+    (3, "IT support ticket – wifi down in Craigie Hall"),
+    (3, "Maintenance – broken heater in Residence"),
+    (3, "Maintenance – elevator fault in Science A"),
+    (3, "Maintenance – parking gate malfunction"),
+    (3, "Info lookup – room capacity for ENA 301"),
+    (3, "Info lookup – services available at MacEwan Hall"),
+    (3, "Info lookup – events today in Social Sciences"),
+    (3, "Low priority – general feedback submission"),
+]
+
+
 def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
     page = styled_frame(parent, bg=BG_MEDIUM)
 
+    # ── Control bar ────────────────────────────────────────────────────────────
     ctrl_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=8)
     ctrl_bar.pack(side="top", fill="x")
 
-    cols = ("Request Id", "Function Handle", "Refresh Handle", "Description")
+    # ── Queue table ────────────────────────────────────────────────────────────
+    section_tag(page, "PENDING QUEUE").pack(anchor="w", padx=10, pady=(6, 0))
+    cols = ("Request Id", "Priority", "Description")
     table, _ = make_table(page, cols, {
-        "Request Id": 80, "Function Handle": 200, "Refresh Handle": 200, "Description": 220
+        "Request Id": 90, "Priority": 110, "Description": 430,
     })
+
+    # ── Processing log ─────────────────────────────────────────────────────────
+    section_tag(page, "PROCESSING LOG").pack(anchor="w", padx=10, pady=(8, 0))
+    log_frame = styled_frame(page, bg=BG_MEDIUM)
+    log_frame.pack(fill="both", expand=True, padx=8, pady=(2, 6))
+
+    log_box = tk.Text(
+        log_frame,
+        height=8,
+        bg=BG_LIGHT, fg=FG_PRIMARY,
+        font=("Consolas", 9),
+        relief="flat",
+        state="disabled",
+        wrap="word",
+        highlightthickness=1,
+        highlightbackground=BORDER,
+    )
+    log_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_box.yview)
+    log_box.configure(yscrollcommand=log_scroll.set)
+    log_scroll.pack(side="right", fill="y")
+    log_box.pack(fill="both", expand=True)
+
+    log_box.tag_configure("ts",    foreground=FG_MUTED)
+    log_box.tag_configure("ok",    foreground=SUCCESS)
+    log_box.tag_configure("emerg", foreground=DANGER)
+    log_box.tag_configure("std",   foreground=ACCENT)
+
+    _demo_running = [False]
+
+    # ── Helpers ────────────────────────────────────────────────────────────────
+    def _log(text: str, tag: str = "ok"):
+        from datetime import datetime
+        ts = datetime.now().strftime("%H:%M:%S")
+        log_box.configure(state="normal")
+        log_box.insert("end", f"[{ts}]  ", "ts")
+        log_box.insert("end", text + "\n", tag)
+        log_box.see("end")
+        log_box.configure(state="disabled")
+
+    def _priority_label(p: int) -> str:
+        return {1: "🔴 Emergency", 2: "🟡 Standard", 3: "⚪ Low"}.get(p, str(p))
 
     def refresh_table(*_):
         table.delete(*table.get_children())
-        tail = request_pipeline.buffer.peek_tail()
-        head = request_pipeline.buffer.peek_head()
+        node = request_pipeline.buffer.peek_tail()
         i = 0
-        while tail != None:
-            r = tail.val
-            table_insert(table, i, (r.position, r.function, r.refresh, r.request_data))
-            tail = tail.prev
-            i   += 1
+        while node is not None:
+            r = node.val
+            if isinstance(r.request_data, tuple):
+                pri, desc = r.request_data
+                prio_text = _priority_label(pri)
+            else:
+                prio_text = "—"
+                desc = str(r.request_data)
+            table_insert(table, i, (r.position, prio_text, desc))
+            node = node.prev
+            i += 1
+
+    def _enqueue_demo_requests():
+        for priority, desc in _DEMO_REQUESTS:
+            request_pipeline.enque_request(
+                lambda p=priority, d=desc: _log(
+                    f"Processed [{_priority_label(p)}] – {d}",
+                    tag="emerg" if p == 1 else ("std" if p == 2 else "ok"),
+                ),
+                lambda: None,
+                (priority, desc),
+            )
+        _log(f"Enqueued {len(_DEMO_REQUESTS)} demo requests.", "ts")
+        refresh_table()
 
     def process_next():
+        if request_pipeline.buffer.get_len() == 0:
+            _log("Queue is empty – nothing to process.", "ts")
+            return
         request_pipeline.deque_request()
         refresh_table()
 
-    styled_button(ctrl_bar, "▶  Process Next", process_next, variant="primary").pack(side="left", padx=4)
-    styled_button(ctrl_bar, "⟳  Refresh",      refresh_table, variant="default").pack(side="left", padx=4)
+    def process_all():
+        count = 0
+        while request_pipeline.buffer.get_len() > 0:
+            request_pipeline.deque_request()
+            count += 1
+        _log(f"Processed all {count} remaining requests." if count else "Queue was already empty.", "ts")
+        refresh_table()
+
+    def _demo_step(remaining: int, saved_mode: str):
+        if remaining <= 0 or request_pipeline.buffer.get_len() == 0:
+            _demo_running[0] = False
+            # Restore the pipeline mode that was active before the demo
+            global pipeline_mode
+            pipeline_mode = saved_mode
+            mode_label.config(text=f"Pipeline: {pipeline_mode}")
+            _log(f"─── Demo complete — pipeline restored to '{saved_mode}' mode ───", "ts")
+            refresh_table()
+            return
+        request_pipeline.deque_request()
+        refresh_table()
+        page.after(250, lambda: _demo_step(remaining - 1, saved_mode))
+
+    def run_demo():
+        global pipeline_mode
+        if _demo_running[0]:
+            _log("Demo already running – please wait.", "ts")
+            return
+        log_box.configure(state="normal")
+        log_box.delete("1.0", "end")
+        log_box.configure(state="disabled")
+        # Switch to Manual so the auto-drainer doesn't consume requests
+        saved_mode = pipeline_mode
+        pipeline_mode = "Manual"
+        mode_label.config(text="Pipeline: Manual")
+        _log("═══ Starting Pipeline Demo (22 requests) ═══", "ts")
+        _log(f"Pipeline switched to Manual (was {saved_mode}) — requests will not auto-drain.", "ts")
+        _enqueue_demo_requests()
+        _demo_running[0] = True
+        page.after(300, lambda: _demo_step(len(_DEMO_REQUESTS), saved_mode))
+
+    def load_dummies():
+        global pipeline_mode
+        if _demo_running[0]:
+            _log("Demo is currently running. Wait for it to finish.", "ts")
+            return
+        pipeline_mode = "Manual"
+        mode_label.config(text="Pipeline: Manual")
+        _log("═══ Loading Dummy Data ═══", "ts")
+        _log("Pipeline switched to Manual — you can now process requests manually.", "ts")
+        _enqueue_demo_requests()
+
+    # ── Buttons ────────────────────────────────────────────────────────────────
+    styled_button(ctrl_bar, "🚀  Run Demo",       run_demo,      variant="primary").pack(side="left", padx=4)
+    styled_button(ctrl_bar, "📥  Load Dummies",  load_dummies,  variant="default").pack(side="left", padx=4)
+    styled_button(ctrl_bar, "▶  Process Next",   process_next,  variant="default").pack(side="left", padx=4)
+    styled_button(ctrl_bar, "⏩  Process All",    process_all,   variant="default").pack(side="left", padx=4)
+    styled_button(ctrl_bar, "⟳  Refresh",        refresh_table, variant="default").pack(side="left", padx=4)
 
     return page
 
