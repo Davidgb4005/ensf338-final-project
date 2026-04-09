@@ -5,11 +5,14 @@ import BookingSystem.room_booking
 import random
 import NavigationSystem.traversal as tv
 from ServiceSystem.service_queue import ServiceRequest as requests
+import DataStructures.AVL as avl
+
+BOOKING_DAYS = 30
 
 class Room:
     def __init__(self,id,room_type):
         self.id = id
-        self.booking = BookingSystem.room_booking.BookingSystem(90)
+        self.booking = BookingSystem.room_booking.BookingSystem(BOOKING_DAYS)
         self.info = "Blank"
         self.room_type = room_type
     def edit_booking(self,booking,info):
@@ -34,12 +37,14 @@ class Building:
         self.bid = bid
         self.floors = []
         self.node = tv.Node(bid,location.x_position,location.y_position)
+        self.node = tv.Node(bid,location.x_position,location.y_position)
         self.services = []
     def get_info(self):
         return f"Building Name:{self.name} - ID:{self.bid}. Has {len(self.floors)} Floors With Avaiable Serives {self.services}"
  
 class Pathway:
     def __init__(self,id,location:Location):
+        self.node = tv.Node(id,location.x_position,location.y_position)
         self.node = tv.Node(id,location.x_position,location.y_position)
 
 class Campus:
@@ -51,6 +56,7 @@ class Campus:
         self.campus_graph = tv.graph()
         self.init_graph()
         self.requests = requests
+        self.lookup = avl.AVLTree()
 
     def get_building_keys(self):
         return self.buildings.keys()
@@ -66,6 +72,10 @@ class Campus:
         floor_id = (int)(floor_id)
         print(floor_id)
         return (self.buildings[building_key].floors)[int(floor_id)].rooms
+    
+
+
+
     def get_bookings(self,building_key,floor_id,room_id,day,start_time,end_time):
         bookings = ((self.buildings[building_key].floors)[int(floor_id)].rooms)[int(room_id)].booking
         if bookings == None:
@@ -97,10 +107,11 @@ class Campus:
         self.buildings[building].services.remove(service)
  
     def add_building(self,floors,rooms,building:Building):
+        room_choices = ["Study","Confrense","Washroom","ClassRoom","Janitorial"]
         for i in range(floors):
             f = Floor(i)
             for k in range(rooms):
-                f.rooms.append(Room(k,random.choice("Study Room")))
+                f.rooms.append(Room(k,random.choice(room_choices)))
             building.floors.append(f)
         self.buildings[building.bid] = building
 
@@ -303,9 +314,9 @@ class Campus:
         for bid, name, lat, lon in data:
             new_building = Building(name,bid,Location(lat,lon))
             self.add_building(random.randint(2, 6),random.randint(5, 20),new_building)
-            for service, buildings in services_data:
-                if new_building.bid in buildings:
-                    new_building.services.append(service)
+            for sname, bids in services_data:
+                if bid in bids:
+                    new_building.services.append(sname)
             #self.buildings[bid] = b
 
 

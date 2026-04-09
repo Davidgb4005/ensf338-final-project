@@ -14,13 +14,13 @@ import GlobalObjects.objects as obj
 import RequestPipeline.request_pipeline as rp
 import NavigationSystem.traversal as tv
 import BookingSystem.room_booking as rb
-
+import DataStructures.AVL as avl
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 MAP_PATH = PROJECT_ROOT / "GUI" / "img" / "UCalgary-Main_Campus_Map-20230724.png"
 TIME_INCREMENTS = 48
-BOOKING_DAYS    = 90
+BOOKING_DAYS    = obj.BOOKING_DAYS
 
 PIPELINE_MODES = ["Manual", "Demo", "Auto"]
 PIPELINE_MODE_MESSAGES = {
@@ -56,6 +56,7 @@ DD_WIDTH = 16
 # ---------------------------------------------------------------------------
 campus           = obj.Campus()
 request_pipeline = rp.request_pipeline()
+service_pipeline = rp.request_pipeline()
 pipeline_mode    = "Auto"
 pages: dict      = {}
 current_page     = None
@@ -204,6 +205,14 @@ def popup_field(parent, label: str, prefill: str = "") -> tk.Entry:
         entry.insert(0, prefill)
     return entry
 
+def popup_label(parent, label: str,) -> tk.Label:
+    styled_label(parent, label, font=FONT_LABEL, fg=FG_MUTED, bg=BG_MEDIUM).pack(
+        anchor="w", padx=16, pady=(10, 2)
+    )
+    entry = styled_label(parent, width=28)
+    entry.pack(anchor="w", padx=16, pady=(0, 4))
+    return entry
+
 # ---------------------------------------------------------------------------
 # Shared validation helpers
 # ---------------------------------------------------------------------------
@@ -311,6 +320,9 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             return
         _repopulate(room_dd, room_var, [r.id for r in campus.get_rooms(building_var.get(), f)])
 
+    def _delete_table(*args):
+        table.delete(*table.get_children())
+
     def _repopulate(widget, var, items):
         menu = widget["menu"]
         menu.delete(0, "end")
@@ -319,7 +331,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
 
     building_var.trace_add("write", refresh_floor_dd)
     floor_var.trace_add("write", refresh_room_dd)
-
+    room_var.trace_add("write",_delete_table)
     # ── Filter bar ───────────────────────────────────────────────────────────
     filter_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=8)
     filter_bar.pack(side="top", fill="x")
@@ -402,7 +414,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         if day is None:
             return
         start = 0 if start_var.get() == "Start Time" else time_str_to_index(start_var.get())
-        end   = TIME_INCREMENTS - 1 if end_var.get() == "End Time" else time_str_to_index(end_var.get())
+        end   = TIME_INCREMENTS  if end_var.get() == "End Time" else time_str_to_index(end_var.get())
         table.delete(*table.get_children())
         bookings = campus.get_bookings(
             building_var.get(), floor_var.get(), room_var.get(), day, start, end
@@ -478,8 +490,9 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             mb.showinfo("Booking Error", "Please fill in all fields.")
             return
         booking = _resolve_booking(vals)
+        campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
         request_pipeline.enque_request(
-            lambda: booking.update_booking(result[0], result[1]), _refresh_table, "Add Booking"
+            lambda: booking.update_booking(result[0], result[1],campus_info), _refresh_table, "Add Booking"
         )
 
     def _delete_booking():
@@ -490,8 +503,9 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             mb.showinfo("Booking Error", f"No booking for {vals[2]} – {vals[3]}.")
             return
         booking = _resolve_booking(vals)
+        campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
         request_pipeline.enque_request(
-            lambda: booking.update_booking(None, "Vacant"), _refresh_table, "Delete Booking"
+            lambda: booking.update_booking(None, "Vacant",campus_info), _refresh_table, "Delete Booking"
         )
 
     # Service actions
@@ -626,15 +640,65 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         generate_pages()
         show_room_booking()
 
+    def _search_bookings():
+        popup = popup_base("Search Booking By NAme")
+        fields = [
+            popup_field(popup, "Name"),
+        ]
+        result = [None] * 1
+
+        def submit():
+            for i, e in enumerate(fields):
+                result[i] = e.get()
+            popup.destroy()
+
+        styled_button(popup, "Search", submit, variant="success").pack(pady=(8, 16), padx=16)
+        popup.wait_window()
+        if not all(result):
+            mb.showinfo("Search Person Error", "Please fill in all fields.")
+            return
+
+
+        booking = rb.booking_search.search(avl.hash_str_to_int(result[0]))
+        def results(booking):
+            if booking == None:
+                popup = popup_base("Results")
+                labels = [
+                    styled_label(popup, text="No Results Found"),
+                ]
+            else:
+                booking = booking.data
+                popup = popup_base("Results")
+                labels = [
+                    styled_label(popup, text="Booking Start Time: " +booking.data.start_time),
+                    styled_label(popup, text="Booking End Time: " +booking.data.end_time),
+                    styled_label(popup, text="Booker Name: " +booking.data.booker_name),
+                    styled_label(popup, text="Booking Type: " +booking.data.booking_type),
+                    styled_label(popup, text="Building Name: " +booking.building),
+                    styled_label(popup, text="Floor Number: " +booking.floor),
+                    styled_label(popup, text="Room Number: " +booking.room)
+                ]
+                for label in labels:
+                    label.pack()
+            styled_button(popup, "Done", popup.destroy, variant="success").pack(pady=(8, 16), padx=16)
+            popup.wait_window()
+        closure = lambda : results(booking)
+        request_pipeline.enque_request(closure, lambda: None, "Navigation Rendering")
+
+
+
+
     # ── Build grouped button bar ──────────────────────────────────────────────
     button_groups = [
         ("Bookings",  [("＋ Booking",  _add_booking,    "success"),
+                        ("Search",      _search_bookings,    "default"),
                        ("－ Booking",  _delete_booking, "danger")]),
         ("Services",  [("＋ Service",  _add_service,    "success"),
                        ("－ Service",  _delete_service, "danger")]),
         ("Rooms",     [("＋ Room",     _append_room,    "success"),
                        ("✎  Edit",    _edit_room,      "default"),
                        ("－ Room",     _delete_room,    "danger")]),
+
         ("Buildings", [("＋ Building", _add_building,   "success"),
                        ("－ Building", _delete_building,"danger")]),
     ]
@@ -727,6 +791,40 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
 
     return page
 
+
+
+def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
+    page = styled_frame(parent, bg=BG_MEDIUM)
+
+    ctrl_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=8)
+    ctrl_bar.pack(side="top", fill="x")
+
+    cols = ("Request Id", "Function Handle", "Refresh Handle", "Description")
+    table, _ = make_table(page, cols, {
+        "Request Id": 80, "Function Handle": 200, "Refresh Handle": 200, "Description": 220
+    })
+
+    def refresh_table(*_):
+        table.delete(*table.get_children())
+        tail = request_pipeline.buffer.peek_tail()
+        head = request_pipeline.buffer.peek_head()
+        i = 0
+        while tail != None:
+            r = tail.val
+            table_insert(table, i, (r.position, r.function, r.refresh, r.request_data))
+            tail = tail.prev
+            i   += 1
+
+    def process_next():
+        request_pipeline.deque_request()
+        refresh_table()
+
+    styled_button(ctrl_bar, "▶  Process Next", process_next, variant="primary").pack(side="left", padx=4)
+    styled_button(ctrl_bar, "⟳  Refresh",      refresh_table, variant="default").pack(side="left", padx=4)
+
+    return page
+
+
 # ---------------------------------------------------------------------------
 # Page builder: Request Processing
 # ---------------------------------------------------------------------------
@@ -757,7 +855,7 @@ _DEMO_REQUESTS = [
 ]
 
 
-def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
+def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
     page = styled_frame(parent, bg=BG_MEDIUM)
 
     # ── Control bar ────────────────────────────────────────────────────────────
@@ -814,7 +912,7 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
 
     def refresh_table(*_):
         table.delete(*table.get_children())
-        node = request_pipeline.buffer.peek_tail()
+        node = service_pipeline.buffer.peek_tail()
         i = 0
         while node is not None:
             r = node.val
@@ -830,7 +928,7 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
 
     def _enqueue_demo_requests():
         for priority, desc in _DEMO_REQUESTS:
-            request_pipeline.enque_request(
+            service_pipeline.enque_request(
                 lambda p=priority, d=desc: _log(
                     f"Processed [{_priority_label(p)}] – {d}",
                     tag="emerg" if p == 1 else ("std" if p == 2 else "ok"),
@@ -842,22 +940,22 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
         refresh_table()
 
     def process_next():
-        if request_pipeline.buffer.get_len() == 0:
+        if service_pipeline.buffer.get_len() == 0:
             _log("Queue is empty – nothing to process.", "ts")
             return
-        request_pipeline.deque_request()
+        service_pipeline.deque_request()
         refresh_table()
 
     def process_all():
         count = 0
-        while request_pipeline.buffer.get_len() > 0:
-            request_pipeline.deque_request()
+        while service_pipeline.buffer.get_len() > 0:
+            service_pipeline.deque_request()
             count += 1
         _log(f"Processed all {count} remaining requests." if count else "Queue was already empty.", "ts")
         refresh_table()
 
     def _demo_step(remaining: int, saved_mode: str):
-        if remaining <= 0 or request_pipeline.buffer.get_len() == 0:
+        if remaining <= 0 or service_pipeline.buffer.get_len() == 0:
             _demo_running[0] = False
             # Restore the pipeline mode that was active before the demo
             global pipeline_mode
@@ -866,7 +964,7 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
             _log(f"─── Demo complete — pipeline restored to '{saved_mode}' mode ───", "ts")
             refresh_table()
             return
-        request_pipeline.deque_request()
+        service_pipeline.deque_request()
         refresh_table()
         page.after(250, lambda: _demo_step(remaining - 1, saved_mode))
 
@@ -908,6 +1006,12 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
 
     return page
 
+
+
+def build_bonus_page(parent :tk.Frame):
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Placeholder pages
 # ---------------------------------------------------------------------------
@@ -929,7 +1033,8 @@ def generate_pages():
     pages["navigation"]         = build_nav_page(frame)
     pages["room_booking"]       = build_booking_page(frame)
     pages["request_processing"] = build_request_processing_page(frame)
-    for name in ("service_queue", "completed_operation", "bonus"):
+    pages["service_queue"]      = build_service_processing_page(frame)
+    for name in ( "completed_operation", "bonus"):
         pages[name] = build_placeholder_page(frame, name)
 
 
@@ -972,7 +1077,18 @@ def request_pipeline_caller():
         root.after(5000, request_pipeline_caller)
     else:
         root.after(5000, request_pipeline_caller)
-
+def service_pipeline_caller():
+    global pipeline_mode
+    if pipeline_mode == "Auto":
+        while service_pipeline.buffer.get_len() > 0:
+            service_pipeline.deque_request()
+        root.after(500, service_pipeline)
+    elif pipeline_mode == "Demo":
+        if service_pipeline.buffer.get_len() > 0:
+            service_pipeline.deque_request()
+        root.after(5000, service_pipeline_caller)
+    else:
+        root.after(5000, service_pipeline_caller)
 # ---------------------------------------------------------------------------
 # Root window
 # ---------------------------------------------------------------------------
@@ -1064,5 +1180,6 @@ generate_pages()
 show_page("navigation")
 _nav_btns[0].config(fg=FG_PRIMARY, bg=BG_LIGHT)
 request_pipeline_caller()
+service_pipeline_caller()
 
 root.mainloop()

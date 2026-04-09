@@ -26,7 +26,7 @@ class ServiceRequest(PriorityHeap[tuple[int, int, str]]):
         super().__init__()
         self.counter = itertools.count()
 
-    def addRequest(self, priority: int, desc: str) -> None:
+    def addRequest(self, priority, desc, building=None, service=None):
         """
         Enqueues a request into the service queue priority heap. Each request is a tuple,
         with the first field being an int that represents the priority value of the request,
@@ -38,8 +38,22 @@ class ServiceRequest(PriorityHeap[tuple[int, int, str]]):
             priority (int): Priority level of the request to add. 1 = Emergency, 2 = Standard, 3 = Low.
             desc (str): A description of the campus service to be added to the queue.
         """
-        item: tuple[int, int, str] = (priority, next(self.counter), desc)
-        self.heapPush(item)
+        if priority < 1 or priority > 3:
+            print("Priority Error")
+            return None
+        if desc == None or desc == "":
+            print("Description Error")
+            return None
+
+        item = {
+            "priority": priority,
+            "order": next(self.counter),
+            "description": desc,
+            "building": building,
+            "service": service
+        }
+        self.heapPush((priority, item["order"], item))
+
         
     def popRequest(self) -> str | None:
         """
