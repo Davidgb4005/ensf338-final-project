@@ -4,7 +4,8 @@ import itertools
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from DataStructures.PriorityHeap import PriorityHeap
 
-class ServiceRequest(PriorityHeap):
+
+class ServiceRequest(PriorityHeap[tuple[int, int, str]]):
     """
     A service request priority queue where requests are served in order of urgency, stored in a min heap.
     Inherits from PriorityHeap class, as it implements much of its functionality.
@@ -17,7 +18,7 @@ class ServiceRequest(PriorityHeap):
         popRequest() -> str | None: Implements heapPop in order to return a description of current highest priority request.
         showRequests() -> list: Returns shallow copy of the list of requests in queue.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes an object, creating an empty list that will be used as the min heap.
         Uses super init in order to inherit the __init__ method of the PriorityHeap class.
@@ -37,7 +38,7 @@ class ServiceRequest(PriorityHeap):
             priority (int): Priority level of the request to add. 1 = Emergency, 2 = Standard, 3 = Low.
             desc (str): A description of the campus service to be added to the queue.
         """
-        item = (priority, next(self.counter), desc)
+        item: tuple[int, int, str] = (priority, next(self.counter), desc)
         self.heapPush(item)
         
     def popRequest(self) -> str | None:
@@ -48,13 +49,13 @@ class ServiceRequest(PriorityHeap):
         """
         if self.isEmpty():
             return "No service requests currently."
-        request: tuple | None = self.heapPop() #Should return a tuple like (priority int, counter, request str)
+        request: tuple[int, int, str] | None = self.heapPop() #Should return a tuple like (priority int, counter, request str)
         if request: #if request not a tuple. shouldnt happen but apparently there's an error unless I put an if statement.
             _, _, desc = request
             return desc
         return None #this should literally never happen because of the isEmpty check, but better safe than sorry.
 
-    def showRequests(self) -> list:
+    def showRequests(self) -> list[tuple[int, int, str]]:
         """
         Returns a copy of the list of service requests in the queue currently.
         """

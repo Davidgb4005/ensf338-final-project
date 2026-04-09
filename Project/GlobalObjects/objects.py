@@ -37,12 +37,14 @@ class Building:
         self.bid = bid
         self.floors = []
         self.node = tv.Node(bid,location.x_position,location.y_position)
+        self.node = tv.Node(bid,location.x_position,location.y_position)
         self.services = []
     def get_info(self):
         return f"Building Name:{self.name} - ID:{self.bid}. Has {len(self.floors)} Floors With Avaiable Serives {self.services}"
  
 class Pathway:
     def __init__(self,id,location:Location):
+        self.node = tv.Node(id,location.x_position,location.y_position)
         self.node = tv.Node(id,location.x_position,location.y_position)
 
 class Campus:
@@ -317,7 +319,6 @@ class Campus:
                     new_building.services.append(sname)
             #self.buildings[bid] = b
 
-    
 
 
         self.services = {}
