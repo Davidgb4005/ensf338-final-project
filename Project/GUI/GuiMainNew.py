@@ -5,6 +5,7 @@ import tkinter.messagebox as mb
 from datetime import date, datetime
 import os
 import sys
+import platform
 from pathlib import Path                   
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -15,6 +16,21 @@ import RequestPipeline.request_pipeline as rp
 import NavigationSystem.traversal as tv
 import BookingSystem.room_booking as rb
 import DataStructures.AVL as avl
+
+# ---------------------------------------------------------------------------
+# Platform scaling
+# ---------------------------------------------------------------------------
+IS_LINUX = platform.system() == "Linux"
+UI_SCALE = 0.82 if IS_LINUX else 1.0
+
+def sc(value: int) -> int:
+    """Scale a pixel value for the current platform."""
+    return max(1, int(value * UI_SCALE))
+
+def sf(size: int) -> int:
+    """Scale a font size for the current platform."""
+    return max(6, int(size * UI_SCALE))
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -43,11 +59,11 @@ FG_PRIMARY = "#e8ecf2"
 FG_MUTED   = "#8a93a6"
 BORDER     = "#3a4150"
 
-FONT_TITLE  = ("Segoe UI", 13, "bold")
-FONT_LABEL  = ("Segoe UI", 9)
-FONT_BODY   = ("Segoe UI", 10)
-FONT_BUTTON = ("Segoe UI", 9, "bold")
-FONT_NAV    = ("Segoe UI", 10, "bold")
+FONT_TITLE  = ("Segoe UI", sf(13), "bold")
+FONT_LABEL  = ("Segoe UI", sf(9))
+FONT_BODY   = ("Segoe UI", sf(10))
+FONT_BUTTON = ("Segoe UI", sf(9), "bold")
+FONT_NAV    = ("Segoe UI", sf(10), "bold")
 
 DD_WIDTH = 16
 
@@ -93,7 +109,7 @@ def apply_theme(root: tk.Tk):
     style.configure(
         "Treeview",
         background=BG_LIGHT, foreground=FG_PRIMARY,
-        fieldbackground=BG_LIGHT, rowheight=26,
+        fieldbackground=BG_LIGHT, rowheight=sc(26),
         font=FONT_BODY, borderwidth=0,
     )
     style.configure(
@@ -136,7 +152,7 @@ def styled_button(parent, text, command, variant="default", **kw) -> tk.Button:
         parent, text=text, command=command,
         font=FONT_BUTTON, bg=bg, fg=fg,
         activebackground=ACCENT_HOV, activeforeground="#ffffff",
-        relief="flat", padx=10, pady=5,
+        relief="flat", padx=sc(10), pady=sc(5),
         cursor="hand2", bd=0, **kw,
     )
     btn.bind("<Enter>", lambda e: btn.config(bg=ACCENT_HOV if variant == "primary" else _darken(bg)))
@@ -178,7 +194,7 @@ def labelled_control(parent, label_text: str, widget: tk.Widget, bg=BG_MEDIUM) -
 def section_tag(parent, text: str, bg=BG_DARK) -> tk.Label:
     return tk.Label(
         parent, text=f"  {text}",
-        font=("Segoe UI", 7, "bold"),
+        font=("Segoe UI", sf(7), "bold"),
         fg=ACCENT, bg=bg, anchor="w",
     )
 
@@ -197,20 +213,20 @@ def popup_base(title: str) -> tk.Toplevel:
 
 def popup_field(parent, label: str, prefill: str = "") -> tk.Entry:
     styled_label(parent, label, font=FONT_LABEL, fg=FG_MUTED, bg=BG_MEDIUM).pack(
-        anchor="w", padx=16, pady=(10, 2)
+        anchor="w", padx=sc(16), pady=(sc(10), sc(2))
     )
     entry = styled_entry(parent, width=28)
-    entry.pack(anchor="w", padx=16, pady=(0, 4))
+    entry.pack(anchor="w", padx=sc(16), pady=(0, sc(4)))
     if prefill:
         entry.insert(0, prefill)
     return entry
 
-def popup_label(parent, label: str,) -> tk.Label:
+def popup_label(parent, label: str) -> tk.Label:
     styled_label(parent, label, font=FONT_LABEL, fg=FG_MUTED, bg=BG_MEDIUM).pack(
-        anchor="w", padx=16, pady=(10, 2)
+        anchor="w", padx=sc(16), pady=(sc(10), sc(2))
     )
-    entry = styled_label(parent, width=28)
-    entry.pack(anchor="w", padx=16, pady=(0, 4))
+    entry = styled_label(parent, text=label)
+    entry.pack(anchor="w", padx=sc(16), pady=(0, sc(4)))
     return entry
 
 # ---------------------------------------------------------------------------
@@ -250,7 +266,7 @@ def popup_single_field(title: str, label: str):
         result[0] = entry.get()
         popup.destroy()
 
-    styled_button(popup, "Submit", submit, variant="primary").pack(pady=(8, 16), padx=16)
+    styled_button(popup, "Submit", submit, variant="primary").pack(pady=(sc(8), sc(16)), padx=sc(16))
     popup.wait_window()
     return result[0]
 
@@ -260,12 +276,12 @@ def popup_single_field(title: str, label: str):
 
 def make_table(parent, cols: tuple, col_widths: dict) -> tuple[ttk.Treeview, ttk.Scrollbar]:
     frame = styled_frame(parent, bg=BG_MEDIUM)
-    frame.pack(fill="both", expand=True, padx=8, pady=(4, 0))
+    frame.pack(fill="both", expand=True, padx=sc(8), pady=(sc(4), 0))
 
     table = ttk.Treeview(frame, columns=cols, show="headings", selectmode="browse")
     for col in cols:
         table.heading(col, text=col)
-        table.column(col, width=col_widths.get(col, 120), anchor="center")
+        table.column(col, width=sc(col_widths.get(col, 120)), anchor="center")
 
     vsb = ttk.Scrollbar(frame, orient="vertical", command=table.yview)
     table.configure(yscrollcommand=vsb.set)
@@ -332,23 +348,23 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
     building_var.trace_add("write", refresh_floor_dd)
     floor_var.trace_add("write", refresh_room_dd)
     room_var.trace_add("write",_delete_table)
-    # ── Filter bar ───────────────────────────────────────────────────────────
-    filter_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=8)
+
+    filter_bar = styled_frame(page, bg=BG_DARK, padx=sc(10), pady=sc(8))
     filter_bar.pack(side="top", fill="x")
 
     def grid_label(parent, text, col, row=0):
-        """Place a muted label in a grid cell."""
         lbl = tk.Label(parent, text=text, font=FONT_LABEL, fg=FG_MUTED, bg=BG_DARK, anchor="w")
-        lbl.grid(row=row, column=col, sticky="w", padx=(4, 4), pady=(0, 2))
+        lbl.grid(row=row, column=col, sticky="w", padx=(sc(4), sc(4)), pady=(0, sc(2)))
 
-    def grid_widget(widget, col, row=1, padx=(4, 4)):
-        widget.grid(row=row, column=col, sticky="w", padx=padx, pady=(0, 4))
+    def grid_widget(widget, col, row=1, padx=None):
+        if padx is None:
+            padx = (sc(4), sc(4))
+        widget.grid(row=row, column=col, sticky="w", padx=padx, pady=(0, sc(4)))
 
-    # Row 1 — Location
     row1 = styled_frame(filter_bar, bg=BG_DARK)
-    row1.pack(fill="x", pady=(0, 4))
+    row1.pack(fill="x", pady=(0, sc(4)))
 
-    section_tag(row1, "LOCATION").grid(row=0, column=0, rowspan=2, sticky="w", padx=(0, 8))
+    section_tag(row1, "LOCATION").grid(row=0, column=0, rowspan=2, sticky="w", padx=(0, sc(8)))
 
     building_dd = styled_option_menu(row1, building_var, *campus.get_building_keys())
     grid_label(row1, "Building", col=1)
@@ -378,19 +394,17 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             return
         mb.showinfo("Building Info", campus.get_buildings()[b].get_info())
 
-    # Info buttons sit in column 4, aligned to widget row
     info_frame = styled_frame(row1, bg=BG_DARK)
-    info_frame.grid(row=1, column=4, sticky="w", padx=(12, 0), pady=(0, 4))
-    styled_button(info_frame, "Room Info",     _show_room_info,     variant="default").pack(side="left", padx=2)
-    styled_button(info_frame, "Building Info", _show_building_info, variant="default").pack(side="left", padx=2)
+    info_frame.grid(row=1, column=4, sticky="w", padx=(sc(12), 0), pady=(0, sc(4)))
+    styled_button(info_frame, "Room Info",     _show_room_info,     variant="default").pack(side="left", padx=sc(2))
+    styled_button(info_frame, "Building Info", _show_building_info, variant="default").pack(side="left", padx=sc(2))
 
-    separator(filter_bar, bg=BORDER).pack(fill="x", pady=4)
+    separator(filter_bar, bg=BORDER).pack(fill="x", pady=sc(4))
 
-    # Row 2 — Time filter
     row2 = styled_frame(filter_bar, bg=BG_DARK)
     row2.pack(fill="x")
 
-    section_tag(row2, "TIME FILTER").grid(row=0, column=0, rowspan=2, sticky="w", padx=(0, 8))
+    section_tag(row2, "TIME FILTER").grid(row=0, column=0, rowspan=2, sticky="w", padx=(0, sc(8)))
 
     date_entry = styled_entry(row2, width=14)
     date_entry.insert(0, date.today().strftime("%Y/%m/%d"))
@@ -405,7 +419,6 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
     grid_label(row2, "End Time", col=3)
     grid_widget(end_dd, col=3)
 
-    # ── Table ─────────────────────────────────────────────────────────────────
     cols = ("Booked For", "Booked By", "Start Time", "End Time")
     table, _ = make_table(page, cols, {"Booked For": 200, "Booked By": 200, "Start Time": 120, "End Time": 120})
 
@@ -426,13 +439,12 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             table_insert(table, i, (b.booking_type, b.booker_name, b.start_time, b.end_time))
 
     styled_button(row2, "⟳  Refresh", _refresh_table, variant="primary").grid(
-        row=1, column=4, sticky="w", padx=(14, 4), pady=(0, 4)
+        row=1, column=4, sticky="w", padx=(sc(14), sc(4)), pady=(0, sc(4))
     )
 
-    # ── Action bar ────────────────────────────────────────────────────────────
     separator(page, bg=BORDER).pack(fill="x")
 
-    action_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=7)
+    action_bar = styled_frame(page, bg=BG_DARK, padx=sc(10), pady=sc(7))
     action_bar.pack(side="bottom", fill="x")
 
     def _get_selected_row():
@@ -463,7 +475,6 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             return None, None
         return b, f
 
-    # Booking actions
     def _add_booking():
         day = validate_date(date_entry.get())
         if day is None:
@@ -484,7 +495,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             result[1] = type_e.get()
             popup.destroy()
 
-        styled_button(popup, "Confirm Booking", submit, variant="primary").pack(pady=(8, 16), padx=16)
+        styled_button(popup, "Confirm Booking", submit, variant="primary").pack(pady=(sc(8), sc(16)), padx=sc(16))
         popup.wait_window()
         if not result[0] or not result[1]:
             mb.showinfo("Booking Error", "Please fill in all fields.")
@@ -508,7 +519,6 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             lambda: booking.update_booking(None, "Vacant",campus_info), _refresh_table, "Delete Booking"
         )
 
-    # Service actions
     def _add_service():
         b = _require_building()
         if b is None:
@@ -527,7 +537,6 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             return
         campus.delete_service(name, b)
 
-    # Room actions
     def _append_room():
         b, f = _require_building_and_floor()
         if b is None:
@@ -542,7 +551,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             result[1] = type_e.get()
             popup.destroy()
 
-        styled_button(popup, "Add Room", submit, variant="success").pack(pady=(8, 16), padx=16)
+        styled_button(popup, "Add Room", submit, variant="success").pack(pady=(sc(8), sc(16)), padx=sc(16))
         popup.wait_window()
         if not all(result):
             mb.showinfo("Add Room Error", "Please fill in all fields.")
@@ -578,13 +587,13 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         info_e = popup_field(popup, "Info",      prefill=room.info      or "")
         type_e = popup_field(popup, "Room Type", prefill=room.room_type or "")
         styled_label(popup, "Reinitialize Room Bookings", font=FONT_LABEL, fg=FG_MUTED, bg=BG_MEDIUM).pack(
-            anchor="w", padx=16, pady=(10, 2)
+            anchor="w", padx=sc(16), pady=(sc(10), sc(2))
         )
         reinit_var = tk.BooleanVar(value=False)
         tk.Checkbutton(
             popup, variable=reinit_var, bg=BG_MEDIUM, fg=FG_PRIMARY,
             selectcolor=BG_LIGHT, activebackground=BG_MEDIUM, activeforeground=FG_PRIMARY,
-        ).pack(anchor="w", padx=16)
+        ).pack(anchor="w", padx=sc(16))
         result = [None, None, None]
 
         def submit():
@@ -593,7 +602,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             result[2] = reinit_var.get()
             popup.destroy()
 
-        styled_button(popup, "Save Changes", submit, variant="primary").pack(pady=(8, 16), padx=16)
+        styled_button(popup, "Save Changes", submit, variant="primary").pack(pady=(sc(8), sc(16)), padx=sc(16))
         popup.wait_window()
         if not result[0] or not result[1]:
             mb.showinfo("Edit Room Error", "Please fill in all fields.")
@@ -605,7 +614,6 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         refresh_room_dd()
         _refresh_table()
 
-    # Building actions
     def _add_building():
         popup = popup_base("Add Building")
         fields = [
@@ -621,7 +629,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
                 result[i] = e.get()
             popup.destroy()
 
-        styled_button(popup, "Create Building", submit, variant="success").pack(pady=(8, 16), padx=16)
+        styled_button(popup, "Create Building", submit, variant="success").pack(pady=(sc(8), sc(16)), padx=sc(16))
         popup.wait_window()
         if not all(result):
             mb.showinfo("Add Building Error", "Please fill in all fields.")
@@ -641,75 +649,64 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         show_room_booking()
 
     def _search_bookings():
-        popup = popup_base("Search Booking By NAme")
-        fields = [
-            popup_field(popup, "Name"),
-        ]
-        result = [None] * 1
+        popup = popup_base("Search Booking By Name")
+        fields = [popup_field(popup, "Name")]
+        result = [None]
 
         def submit():
-            for i, e in enumerate(fields):
-                result[i] = e.get()
+            result[0] = fields[0].get()
             popup.destroy()
 
-        styled_button(popup, "Search", submit, variant="success").pack(pady=(8, 16), padx=16)
+        styled_button(popup, "Search", submit, variant="success").pack(pady=(sc(8), sc(16)), padx=sc(16))
         popup.wait_window()
         if not all(result):
             mb.showinfo("Search Person Error", "Please fill in all fields.")
             return
 
-
         booking = rb.booking_search.search(avl.hash_str_to_int(result[0]))
+
         def results(booking):
-            if booking == None:
+            if booking is None:
                 popup = popup_base("Results")
-                labels = [
-                    styled_label(popup, text="No Results Found"),
-                ]
+                styled_label(popup, text="No Results Found").pack(padx=sc(16), pady=sc(10))
             else:
                 booking = booking.data
                 popup = popup_base("Results")
-                labels = [
-                    styled_label(popup, text="Booking Start Time: " +booking.data.start_time),
-                    styled_label(popup, text="Booking End Time: " +booking.data.end_time),
-                    styled_label(popup, text="Booker Name: " +booking.data.booker_name),
-                    styled_label(popup, text="Booking Type: " +booking.data.booking_type),
-                    styled_label(popup, text="Building Name: " +booking.building),
-                    styled_label(popup, text="Floor Number: " +booking.floor),
-                    styled_label(popup, text="Room Number: " +booking.room)
-                ]
-                for label in labels:
-                    label.pack()
-            styled_button(popup, "Done", popup.destroy, variant="success").pack(pady=(8, 16), padx=16)
+                for text in [
+                    "Booking Start Time: " + booking.data.start_time,
+                    "Booking End Time: "   + booking.data.end_time,
+                    "Booker Name: "        + booking.data.booker_name,
+                    "Booking Type: "       + booking.data.booking_type,
+                    "Building Name: "      + booking.building,
+                    "Floor Number: "       + booking.floor,
+                    "Room Number: "        + booking.room,
+                ]:
+                    styled_label(popup, text=text).pack(anchor="w", padx=sc(16), pady=(sc(4), 0))
+            styled_button(popup, "Done", popup.destroy, variant="success").pack(pady=(sc(8), sc(16)), padx=sc(16))
             popup.wait_window()
-        closure = lambda : results(booking)
-        request_pipeline.enque_request(closure, lambda: None, "Navigation Rendering")
 
+        request_pipeline.enque_request(lambda: results(booking), lambda: None, "Navigation Rendering")
 
-
-
-    # ── Build grouped button bar ──────────────────────────────────────────────
     button_groups = [
         ("Bookings",  [("＋ Booking",  _add_booking,    "success"),
-                        ("Search",      _search_bookings,    "default"),
+                       ("Search",      _search_bookings, "default"),
                        ("－ Booking",  _delete_booking, "danger")]),
         ("Services",  [("＋ Service",  _add_service,    "success"),
                        ("－ Service",  _delete_service, "danger")]),
         ("Rooms",     [("＋ Room",     _append_room,    "success"),
                        ("✎  Edit",    _edit_room,      "default"),
                        ("－ Room",     _delete_room,    "danger")]),
-
         ("Buildings", [("＋ Building", _add_building,   "success"),
                        ("－ Building", _delete_building,"danger")]),
     ]
     for group_name, btns in button_groups:
         grp = styled_frame(action_bar, bg=BG_DARK)
-        grp.pack(side="left", padx=(0, 14))
-        styled_label(grp, group_name, font=("Segoe UI", 7, "bold"), fg=FG_MUTED, bg=BG_DARK).pack(anchor="w")
+        grp.pack(side="left", padx=(0, sc(14)))
+        styled_label(grp, group_name, font=("Segoe UI", sf(7), "bold"), fg=FG_MUTED, bg=BG_DARK).pack(anchor="w")
         row = styled_frame(grp, bg=BG_DARK)
         row.pack()
         for label, cmd, variant in btns:
-            styled_button(row, label, cmd, variant=variant).pack(side="left", padx=2)
+            styled_button(row, label, cmd, variant=variant).pack(side="left", padx=sc(2))
 
     return page
 
@@ -720,19 +717,19 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
 def build_nav_page(parent: tk.Frame) -> tk.Frame:
     page = styled_frame(parent, bg=BG_MEDIUM)
 
-    ctrl_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=10)
+    ctrl_bar = styled_frame(page, bg=BG_DARK, padx=sc(10), pady=sc(10))
     ctrl_bar.pack(side="top", fill="x")
 
     start_var = tk.StringVar(value="Start Location")
     end_var   = tk.StringVar(value="End Location")
 
     start_dd = styled_option_menu(ctrl_bar, start_var, *campus.get_building_keys(), width=20)
-    tk.Label(ctrl_bar, text="From", font=FONT_LABEL, fg=FG_MUTED, bg=BG_DARK).grid(row=0, column=0, sticky="w", padx=(4,4), pady=(0,2))
-    start_dd.grid(row=1, column=0, sticky="w", padx=(4,4), pady=(0,4))
+    tk.Label(ctrl_bar, text="From", font=FONT_LABEL, fg=FG_MUTED, bg=BG_DARK).grid(row=0, column=0, sticky="w", padx=(sc(4),sc(4)), pady=(0,sc(2)))
+    start_dd.grid(row=1, column=0, sticky="w", padx=(sc(4),sc(4)), pady=(0,sc(4)))
 
     end_dd = styled_option_menu(ctrl_bar, end_var, *campus.get_building_keys(), width=20)
-    tk.Label(ctrl_bar, text="To", font=FONT_LABEL, fg=FG_MUTED, bg=BG_DARK).grid(row=0, column=1, sticky="w", padx=(4,4), pady=(0,2))
-    end_dd.grid(row=1, column=1, sticky="w", padx=(4,4), pady=(0,4))
+    tk.Label(ctrl_bar, text="To", font=FONT_LABEL, fg=FG_MUTED, bg=BG_DARK).grid(row=0, column=1, sticky="w", padx=(sc(4),sc(4)), pady=(0,sc(2)))
+    end_dd.grid(row=1, column=1, sticky="w", padx=(sc(4),sc(4)), pady=(0,sc(4)))
 
     def _get_node_ids():
         s = campus.campus_graph.get_node_id(start_var.get())
@@ -772,10 +769,10 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
         )
 
     btn_area = styled_frame(ctrl_bar, bg=BG_DARK)
-    btn_area.grid(row=1, column=2, sticky="w", padx=(14, 4), pady=(0, 4))
-    styled_button(btn_area, "Find Path", submit,  variant="primary").pack(side="left", padx=3)
-    styled_button(btn_area, "Animate",   animate, variant="default").pack(side="left", padx=3)
-    styled_button(btn_area, "Undo",      undo,    variant="default").pack(side="left", padx=3)
+    btn_area.grid(row=1, column=2, sticky="w", padx=(sc(14), sc(4)), pady=(0, sc(4)))
+    styled_button(btn_area, "Find Path", submit,  variant="primary").pack(side="left", padx=sc(3))
+    styled_button(btn_area, "Animate",   animate, variant="default").pack(side="left", padx=sc(3))
+    styled_button(btn_area, "Undo",      undo,    variant="default").pack(side="left", padx=sc(3))
 
     separator(page, bg=BORDER).pack(fill="x")
 
@@ -792,11 +789,10 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
     return page
 
 
-
 def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
     page = styled_frame(parent, bg=BG_MEDIUM)
 
-    ctrl_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=8)
+    ctrl_bar = styled_frame(page, bg=BG_DARK, padx=sc(10), pady=sc(8))
     ctrl_bar.pack(side="top", fill="x")
 
     cols = ("Request Id", "Function Handle", "Refresh Handle", "Description")
@@ -807,26 +803,25 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
     def refresh_table(*_):
         table.delete(*table.get_children())
         tail = request_pipeline.buffer.peek_tail()
-        head = request_pipeline.buffer.peek_head()
         i = 0
-        while tail != None:
+        while tail is not None:
             r = tail.val
             table_insert(table, i, (r.position, r.function, r.refresh, r.request_data))
             tail = tail.prev
-            i   += 1
+            i += 1
 
     def process_next():
         request_pipeline.deque_request()
         refresh_table()
 
-    styled_button(ctrl_bar, "▶  Process Next", process_next, variant="primary").pack(side="left", padx=4)
-    styled_button(ctrl_bar, "⟳  Refresh",      refresh_table, variant="default").pack(side="left", padx=4)
+    styled_button(ctrl_bar, "▶  Process Next", process_next, variant="primary").pack(side="left", padx=sc(4))
+    styled_button(ctrl_bar, "⟳  Refresh",      refresh_table, variant="default").pack(side="left", padx=sc(4))
 
     return page
 
 
 # ---------------------------------------------------------------------------
-# Page builder: Request Processing
+# Page builder: Service Processing
 # ---------------------------------------------------------------------------
 
 _DEMO_REQUESTS = [
@@ -858,27 +853,24 @@ _DEMO_REQUESTS = [
 def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
     page = styled_frame(parent, bg=BG_MEDIUM)
 
-    # ── Control bar ────────────────────────────────────────────────────────────
-    ctrl_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=8)
+    ctrl_bar = styled_frame(page, bg=BG_DARK, padx=sc(10), pady=sc(8))
     ctrl_bar.pack(side="top", fill="x")
 
-    # ── Queue table ────────────────────────────────────────────────────────────
-    section_tag(page, "PENDING QUEUE").pack(anchor="w", padx=10, pady=(6, 0))
+    section_tag(page, "PENDING QUEUE").pack(anchor="w", padx=sc(10), pady=(sc(6), 0))
     cols = ("Request Id", "Priority", "Description")
     table, _ = make_table(page, cols, {
         "Request Id": 90, "Priority": 110, "Description": 430,
     })
 
-    # ── Processing log ─────────────────────────────────────────────────────────
-    section_tag(page, "PROCESSING LOG").pack(anchor="w", padx=10, pady=(8, 0))
+    section_tag(page, "PROCESSING LOG").pack(anchor="w", padx=sc(10), pady=(sc(8), 0))
     log_frame = styled_frame(page, bg=BG_MEDIUM)
-    log_frame.pack(fill="both", expand=True, padx=8, pady=(2, 6))
+    log_frame.pack(fill="both", expand=True, padx=sc(8), pady=(sc(2), sc(6)))
 
     log_box = tk.Text(
         log_frame,
         height=8,
         bg=BG_LIGHT, fg=FG_PRIMARY,
-        font=("Consolas", 9),
+        font=("Consolas", sf(9)),
         relief="flat",
         state="disabled",
         wrap="word",
@@ -897,7 +889,6 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
 
     _demo_running = [False]
 
-    # ── Helpers ────────────────────────────────────────────────────────────────
     def _log(text: str, tag: str = "ok"):
         from datetime import datetime
         ts = datetime.now().strftime("%H:%M:%S")
@@ -957,7 +948,6 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
     def _demo_step(remaining: int, saved_mode: str):
         if remaining <= 0 or service_pipeline.buffer.get_len() == 0:
             _demo_running[0] = False
-            # Restore the pipeline mode that was active before the demo
             global pipeline_mode
             pipeline_mode = saved_mode
             mode_label.config(text=f"Pipeline: {pipeline_mode}")
@@ -976,7 +966,6 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
         log_box.configure(state="normal")
         log_box.delete("1.0", "end")
         log_box.configure(state="disabled")
-        # Switch to Manual so the auto-drainer doesn't consume requests
         saved_mode = pipeline_mode
         pipeline_mode = "Manual"
         mode_label.config(text="Pipeline: Manual")
@@ -997,18 +986,16 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
         _log("Pipeline switched to Manual — you can now process requests manually.", "ts")
         _enqueue_demo_requests()
 
-    # ── Buttons ────────────────────────────────────────────────────────────────
-    styled_button(ctrl_bar, "🚀  Run Demo",       run_demo,      variant="primary").pack(side="left", padx=4)
-    styled_button(ctrl_bar, "📥  Load Dummies",  load_dummies,  variant="default").pack(side="left", padx=4)
-    styled_button(ctrl_bar, "▶  Process Next",   process_next,  variant="default").pack(side="left", padx=4)
-    styled_button(ctrl_bar, "⏩  Process All",    process_all,   variant="default").pack(side="left", padx=4)
-    styled_button(ctrl_bar, "⟳  Refresh",        refresh_table, variant="default").pack(side="left", padx=4)
+    styled_button(ctrl_bar, "🚀  Run Demo",      run_demo,      variant="primary").pack(side="left", padx=sc(4))
+    styled_button(ctrl_bar, "📥  Load Dummies", load_dummies,  variant="default").pack(side="left", padx=sc(4))
+    styled_button(ctrl_bar, "▶  Process Next",  process_next,  variant="default").pack(side="left", padx=sc(4))
+    styled_button(ctrl_bar, "⏩  Process All",   process_all,   variant="default").pack(side="left", padx=sc(4))
+    styled_button(ctrl_bar, "⟳  Refresh",       refresh_table, variant="default").pack(side="left", padx=sc(4))
 
     return page
 
 
-
-def build_bonus_page(parent :tk.Frame):
+def build_bonus_page(parent: tk.Frame):
     pass
 
 
@@ -1034,7 +1021,7 @@ def generate_pages():
     pages["room_booking"]       = build_booking_page(frame)
     pages["request_processing"] = build_request_processing_page(frame)
     pages["service_queue"]      = build_service_processing_page(frame)
-    for name in ( "completed_operation", "bonus"):
+    for name in ("completed_operation", "bonus"):
         pages[name] = build_placeholder_page(frame, name)
 
 
@@ -1077,18 +1064,20 @@ def request_pipeline_caller():
         root.after(5000, request_pipeline_caller)
     else:
         root.after(5000, request_pipeline_caller)
+
 def service_pipeline_caller():
     global pipeline_mode
     if pipeline_mode == "Auto":
         while service_pipeline.buffer.get_len() > 0:
             service_pipeline.deque_request()
-        root.after(500, service_pipeline)
+        root.after(500, service_pipeline_caller)
     elif pipeline_mode == "Demo":
         if service_pipeline.buffer.get_len() > 0:
             service_pipeline.deque_request()
         root.after(5000, service_pipeline_caller)
     else:
         root.after(5000, service_pipeline_caller)
+
 # ---------------------------------------------------------------------------
 # Root window
 # ---------------------------------------------------------------------------
@@ -1100,28 +1089,27 @@ root.minsize(900, 580)
 apply_theme(root)
 
 # Title bar
-title_bar = tk.Frame(root, bg=BG_DARK, height=48)
+title_bar = tk.Frame(root, bg=BG_DARK, height=sc(48))
 title_bar.pack(side="top", fill="x")
 title_bar.pack_propagate(False)
 tk.Label(
     title_bar, text="  UCalgary Campus Manager",
-    font=("Segoe UI", 12, "bold"), fg=FG_PRIMARY, bg=BG_DARK, anchor="w",
+    font=("Segoe UI", sf(12), "bold"), fg=FG_PRIMARY, bg=BG_DARK, anchor="w",
 ).pack(side="left", fill="y")
 mode_label = tk.Label(
     title_bar, text=f"Pipeline: {pipeline_mode}",
     font=FONT_LABEL, fg=ACCENT, bg=BG_DARK,
 )
-mode_label.pack(side="right", padx=14)
+mode_label.pack(side="right", padx=sc(14))
 
-# Accent line under title
 tk.Frame(root, bg=ACCENT, height=2).pack(fill="x")
 
-# Body — sidebar + content
 body = tk.Frame(root, bg=BG_DARK)
 body.pack(fill="both", expand=True)
 
 # Sidebar
-sidebar = tk.Frame(body, bg=BG_DARK, width=160)
+SIDEBAR_WIDTH = sc(160)
+sidebar = tk.Frame(body, bg=BG_DARK, width=SIDEBAR_WIDTH)
 sidebar.pack(side="left", fill="y")
 sidebar.pack_propagate(False)
 tk.Frame(sidebar, bg=BORDER, width=1).pack(side="right", fill="y")
@@ -1143,8 +1131,8 @@ def _make_nav_btn(label: str, cmd):
         sidebar, text=label, font=FONT_NAV,
         fg=FG_MUTED, bg=BG_DARK,
         activebackground=BG_LIGHT, activeforeground=FG_PRIMARY,
-        relief="flat", anchor="w", padx=16, pady=10,
-        cursor="hand2", bd=0,
+        relief="flat", anchor="w", padx=sc(16), pady=sc(10),
+        cursor="hand2", bd=0, wraplength=SIDEBAR_WIDTH - sc(20),
     )
     btn.pack(fill="x")
     _nav_btns.append(btn)
@@ -1165,10 +1153,9 @@ for lbl, fn in nav_items:
 tk.Frame(sidebar, bg=BG_DARK).pack(fill="both", expand=True)
 tk.Frame(sidebar, bg=BORDER, height=1).pack(fill="x")
 styled_button(sidebar, "⇄  Toggle Mode", toggle_pipeline_mode, variant="default").pack(
-    fill="x", padx=8, pady=8
+    fill="x", padx=sc(8), pady=sc(8)
 )
 
-# Content frame
 frame = tk.Frame(body, bg=BG_MEDIUM)
 frame.pack(side="left", fill="both", expand=True)
 
