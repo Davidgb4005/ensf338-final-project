@@ -14,13 +14,13 @@ import GlobalObjects.objects as obj
 import RequestPipeline.request_pipeline as rp
 import NavigationSystem.traversal as tv
 import BookingSystem.room_booking as rb
-
+import DataStructures.AVL as avl
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 MAP_PATH = PROJECT_ROOT / "GUI" / "img" / "UCalgary-Main_Campus_Map-20230724.png"
 TIME_INCREMENTS = 48
-BOOKING_DAYS    = 90
+BOOKING_DAYS    = obj.BOOKING_DAYS
 
 PIPELINE_MODES = ["Manual", "Demo", "Auto"]
 PIPELINE_MODE_MESSAGES = {
@@ -204,6 +204,14 @@ def popup_field(parent, label: str, prefill: str = "") -> tk.Entry:
         entry.insert(0, prefill)
     return entry
 
+def popup_label(parent, label: str,) -> tk.Label:
+    styled_label(parent, label, font=FONT_LABEL, fg=FG_MUTED, bg=BG_MEDIUM).pack(
+        anchor="w", padx=16, pady=(10, 2)
+    )
+    entry = styled_label(parent, width=28)
+    entry.pack(anchor="w", padx=16, pady=(0, 4))
+    return entry
+
 # ---------------------------------------------------------------------------
 # Shared validation helpers
 # ---------------------------------------------------------------------------
@@ -311,6 +319,9 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             return
         _repopulate(room_dd, room_var, [r.id for r in campus.get_rooms(building_var.get(), f)])
 
+    def _delete_table(*args):
+        table.delete(*table.get_children())
+
     def _repopulate(widget, var, items):
         menu = widget["menu"]
         menu.delete(0, "end")
@@ -319,7 +330,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
 
     building_var.trace_add("write", refresh_floor_dd)
     floor_var.trace_add("write", refresh_room_dd)
-
+    room_var.trace_add("write",_delete_table)
     # ── Filter bar ───────────────────────────────────────────────────────────
     filter_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=8)
     filter_bar.pack(side="top", fill="x")
@@ -402,7 +413,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         if day is None:
             return
         start = 0 if start_var.get() == "Start Time" else time_str_to_index(start_var.get())
-        end   = TIME_INCREMENTS - 1 if end_var.get() == "End Time" else time_str_to_index(end_var.get())
+        end   = TIME_INCREMENTS  if end_var.get() == "End Time" else time_str_to_index(end_var.get())
         table.delete(*table.get_children())
         bookings = campus.get_bookings(
             building_var.get(), floor_var.get(), room_var.get(), day, start, end
@@ -478,8 +489,9 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             mb.showinfo("Booking Error", "Please fill in all fields.")
             return
         booking = _resolve_booking(vals)
+        campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
         request_pipeline.enque_request(
-            lambda: booking.update_booking(result[0], result[1]), _refresh_table, "Add Booking"
+            lambda: booking.update_booking(result[0], result[1],campus_info), _refresh_table, "Add Booking"
         )
 
     def _delete_booking():
@@ -490,8 +502,9 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             mb.showinfo("Booking Error", f"No booking for {vals[2]} – {vals[3]}.")
             return
         booking = _resolve_booking(vals)
+        campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
         request_pipeline.enque_request(
-            lambda: booking.update_booking(None, "Vacant"), _refresh_table, "Delete Booking"
+            lambda: booking.update_booking(None, "Vacant",campus_info), _refresh_table, "Delete Booking"
         )
 
     # Service actions
@@ -626,15 +639,65 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         generate_pages()
         show_room_booking()
 
+    def _search_bookings():
+        popup = popup_base("Search Booking By NAme")
+        fields = [
+            popup_field(popup, "Name"),
+        ]
+        result = [None] * 1
+
+        def submit():
+            for i, e in enumerate(fields):
+                result[i] = e.get()
+            popup.destroy()
+
+        styled_button(popup, "Search", submit, variant="success").pack(pady=(8, 16), padx=16)
+        popup.wait_window()
+        if not all(result):
+            mb.showinfo("Search Person Error", "Please fill in all fields.")
+            return
+
+
+        booking = rb.booking_search.search(avl.hash_str_to_int(result[0]))
+        def results(booking):
+            if booking == None:
+                popup = popup_base("Results")
+                labels = [
+                    styled_label(popup, text="No Results Found"),
+                ]
+            else:
+                booking = booking.data
+                popup = popup_base("Results")
+                labels = [
+                    styled_label(popup, text="Booking Start Time: " +booking.data.start_time),
+                    styled_label(popup, text="Booking End Time: " +booking.data.end_time),
+                    styled_label(popup, text="Booker Name: " +booking.data.booker_name),
+                    styled_label(popup, text="Booking Type: " +booking.data.booking_type),
+                    styled_label(popup, text="Building Name: " +booking.building),
+                    styled_label(popup, text="Floor Number: " +booking.floor),
+                    styled_label(popup, text="Room Number: " +booking.room)
+                ]
+                for label in labels:
+                    label.pack()
+            styled_button(popup, "Done", popup.destroy, variant="success").pack(pady=(8, 16), padx=16)
+            popup.wait_window()
+        closure = lambda : result(booking)
+        request_pipeline.enque_request(closure, lambda: None, "Navigation Rendering")
+        print(booking)
+
+
+
     # ── Build grouped button bar ──────────────────────────────────────────────
     button_groups = [
         ("Bookings",  [("＋ Booking",  _add_booking,    "success"),
+                        ("Search",      _search_bookings,    "default"),
                        ("－ Booking",  _delete_booking, "danger")]),
         ("Services",  [("＋ Service",  _add_service,    "success"),
                        ("－ Service",  _delete_service, "danger")]),
         ("Rooms",     [("＋ Room",     _append_room,    "success"),
                        ("✎  Edit",    _edit_room,      "default"),
                        ("－ Room",     _delete_room,    "danger")]),
+
         ("Buildings", [("＋ Building", _add_building,   "success"),
                        ("－ Building", _delete_building,"danger")]),
     ]
@@ -907,6 +970,12 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
     styled_button(ctrl_bar, "⟳  Refresh",        refresh_table, variant="default").pack(side="left", padx=4)
 
     return page
+
+
+
+def build_bonus_page(parent :tk.Frame):
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Placeholder pages
