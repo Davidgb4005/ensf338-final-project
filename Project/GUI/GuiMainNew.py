@@ -56,6 +56,7 @@ DD_WIDTH = 16
 # ---------------------------------------------------------------------------
 campus           = obj.Campus()
 request_pipeline = rp.request_pipeline()
+service_pipeline = rp.request_pipeline()
 pipeline_mode    = "Auto"
 pages: dict      = {}
 current_page     = None
@@ -681,9 +682,9 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
                     label.pack()
             styled_button(popup, "Done", popup.destroy, variant="success").pack(pady=(8, 16), padx=16)
             popup.wait_window()
-        closure = lambda : result(booking)
+        closure = lambda : results(booking)
         request_pipeline.enque_request(closure, lambda: None, "Navigation Rendering")
-        print(booking)
+
 
 
 
@@ -790,6 +791,40 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
 
     return page
 
+
+
+def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
+    page = styled_frame(parent, bg=BG_MEDIUM)
+
+    ctrl_bar = styled_frame(page, bg=BG_DARK, padx=10, pady=8)
+    ctrl_bar.pack(side="top", fill="x")
+
+    cols = ("Request Id", "Function Handle", "Refresh Handle", "Description")
+    table, _ = make_table(page, cols, {
+        "Request Id": 80, "Function Handle": 200, "Refresh Handle": 200, "Description": 220
+    })
+
+    def refresh_table(*_):
+        table.delete(*table.get_children())
+        tail = request_pipeline.buffer.peek_tail()
+        head = request_pipeline.buffer.peek_head()
+        i = 0
+        while tail != None:
+            r = tail.val
+            table_insert(table, i, (r.position, r.function, r.refresh, r.request_data))
+            tail = tail.prev
+            i   += 1
+
+    def process_next():
+        request_pipeline.deque_request()
+        refresh_table()
+
+    styled_button(ctrl_bar, "▶  Process Next", process_next, variant="primary").pack(side="left", padx=4)
+    styled_button(ctrl_bar, "⟳  Refresh",      refresh_table, variant="default").pack(side="left", padx=4)
+
+    return page
+
+
 # ---------------------------------------------------------------------------
 # Page builder: Request Processing
 # ---------------------------------------------------------------------------
@@ -820,7 +855,7 @@ _DEMO_REQUESTS = [
 ]
 
 
-def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
+def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
     page = styled_frame(parent, bg=BG_MEDIUM)
 
     # ── Control bar ────────────────────────────────────────────────────────────
@@ -877,7 +912,7 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
 
     def refresh_table(*_):
         table.delete(*table.get_children())
-        node = request_pipeline.buffer.peek_tail()
+        node = service_pipeline.buffer.peek_tail()
         i = 0
         while node is not None:
             r = node.val
@@ -893,7 +928,7 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
 
     def _enqueue_demo_requests():
         for priority, desc in _DEMO_REQUESTS:
-            request_pipeline.enque_request(
+            service_pipeline.enque_request(
                 lambda p=priority, d=desc: _log(
                     f"Processed [{_priority_label(p)}] – {d}",
                     tag="emerg" if p == 1 else ("std" if p == 2 else "ok"),
@@ -905,22 +940,22 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
         refresh_table()
 
     def process_next():
-        if request_pipeline.buffer.get_len() == 0:
+        if service_pipeline.buffer.get_len() == 0:
             _log("Queue is empty – nothing to process.", "ts")
             return
-        request_pipeline.deque_request()
+        service_pipeline.deque_request()
         refresh_table()
 
     def process_all():
         count = 0
-        while request_pipeline.buffer.get_len() > 0:
-            request_pipeline.deque_request()
+        while service_pipeline.buffer.get_len() > 0:
+            service_pipeline.deque_request()
             count += 1
         _log(f"Processed all {count} remaining requests." if count else "Queue was already empty.", "ts")
         refresh_table()
 
     def _demo_step(remaining: int, saved_mode: str):
-        if remaining <= 0 or request_pipeline.buffer.get_len() == 0:
+        if remaining <= 0 or service_pipeline.buffer.get_len() == 0:
             _demo_running[0] = False
             # Restore the pipeline mode that was active before the demo
             global pipeline_mode
@@ -929,7 +964,7 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
             _log(f"─── Demo complete — pipeline restored to '{saved_mode}' mode ───", "ts")
             refresh_table()
             return
-        request_pipeline.deque_request()
+        service_pipeline.deque_request()
         refresh_table()
         page.after(250, lambda: _demo_step(remaining - 1, saved_mode))
 
@@ -998,7 +1033,8 @@ def generate_pages():
     pages["navigation"]         = build_nav_page(frame)
     pages["room_booking"]       = build_booking_page(frame)
     pages["request_processing"] = build_request_processing_page(frame)
-    for name in ("service_queue", "completed_operation", "bonus"):
+    pages["service_queue"]      = build_service_processing_page(frame)
+    for name in ( "completed_operation", "bonus"):
         pages[name] = build_placeholder_page(frame, name)
 
 
@@ -1041,7 +1077,18 @@ def request_pipeline_caller():
         root.after(5000, request_pipeline_caller)
     else:
         root.after(5000, request_pipeline_caller)
-
+def service_pipeline_caller():
+    global pipeline_mode
+    if pipeline_mode == "Auto":
+        while service_pipeline.buffer.get_len() > 0:
+            service_pipeline.deque_request()
+        root.after(500, service_pipeline)
+    elif pipeline_mode == "Demo":
+        if service_pipeline.buffer.get_len() > 0:
+            service_pipeline.deque_request()
+        root.after(5000, service_pipeline_caller)
+    else:
+        root.after(5000, service_pipeline_caller)
 # ---------------------------------------------------------------------------
 # Root window
 # ---------------------------------------------------------------------------
@@ -1133,5 +1180,6 @@ generate_pages()
 show_page("navigation")
 _nav_btns[0].config(fg=FG_PRIMARY, bg=BG_LIGHT)
 request_pipeline_caller()
+service_pipeline_caller()
 
 root.mainloop()
