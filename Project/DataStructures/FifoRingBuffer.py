@@ -11,7 +11,6 @@ class FifoRingBuffer(Generic[T]):
         self.capacity = capacity
         self.buffer: list[Optional[T]] = [None] * capacity
         self.items = 0
-        pass # I don't know what this is here for, leaving it here just in case
 
     def append_buffer(self, data: T) -> None:
         if self.items < self.capacity:

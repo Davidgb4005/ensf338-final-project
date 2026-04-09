@@ -11,7 +11,7 @@ class LifoRingBuffer(Generic[T]):
         self.index = capacity
         self.items = 0
         if self.data_type is not None:
-            self.buffer: list[Optional[T]] = [self.data_type()] * capacity
+            self.buffer: list[Optional[T]] = [self.data_type() for _ in range(capacity)]
         else:
             self.buffer = [None] * capacity
 
@@ -41,4 +41,4 @@ class LifoRingBuffer(Generic[T]):
     def access_at_index(self, index: int) -> Optional[T]:
         if index > self.capacity:
             return None
-        return self.buffer[(self.index + index )% self.capacity]
+        return self.buffer[(self.index + index) % self.capacity]
