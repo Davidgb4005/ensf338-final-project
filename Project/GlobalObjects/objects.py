@@ -7,6 +7,7 @@ import NavigationSystem.traversal as tv
 from ServiceSystem.service_queue import ServiceRequest as requests
 from ServiceSystem.service_queue import ServiceRequest
 import DataStructures.AVL as avl
+from LookupSystem.lookup import CampusLookup
 
 BOOKING_DAYS = 30
 
@@ -57,8 +58,9 @@ class Campus:
         self.campus_graph = tv.graph()
         self.init_graph()
         self.requests = requests
-        self.lookup = avl.AVLTree()
-        self.service_queue = ServiceRequests()
+        self.lookup = CampusLookup()
+        self.init_lookup()
+        self.service_queue = ServiceRequest()
         self.completed_services = []
 
     def get_building_keys(self):
@@ -122,6 +124,10 @@ class Campus:
 
     def remove_building(self,building:Building):
         deleted_building = self.get_buildings()[building.bid]
+        self.lookup.delete_building(deleted_building)
+        for floor in deleted_building.floors:
+            for room in floor.rooms:
+                self.lookup.delete_room(deleted_building.bid, floor.id, room.id)
         self.buildings.pop(building.bid)
 
     def init_ucalgary(self):
@@ -328,6 +334,14 @@ class Campus:
         for sname, bids in services_data:
             self.services[sname] = [self.buildings[b] for b in bids]
 
+    def init_lookup(self):
+        for building in self.buildings.values():
+            self.lookup.insert_building(building)
+            for floor in building.floors:
+                for room in floor.rooms:
+                    self.lookup.insert_room(building.bid, floor.id, room)
+        for sname in self.services:
+            self.lookup.insert_service(sname, self.services[sname])
 
     def init_graph(self):
         for i in self.pathways:
