@@ -901,97 +901,96 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
     def _priority_label(p: int) -> str:
         return {1: "🔴 Emergency", 2: "🟡 Standard", 3: "⚪ Low"}.get(p, str(p))
 
+    def add_request():
+    popup = popup_base("Add Service Request")
+
+    building_var = tk.StringVar(value="Building")
+    service_var = tk.StringVar(value="Service")
+    priority_var = tk.StringVar(value="Priority")
+
+    styled_label(popup, "Building", font=FONT_LABEL, fg=FG_MUTED, bg=BG_MEDIUM).pack(anchor="w", padx=16, pady=(10, 2))
+    building_dd = styled_option_menu(popup, building_var, *campus.get_building_keys(), width=20)
+    building_dd.pack(anchor="w", padx=16)
+
+    styled_label(popup, "Service", font=FONT_LABEL, fg=FG_MUTED, bg=BG_MEDIUM).pack(anchor="w", padx=16, pady=(10, 2))
+    service_dd = styled_option_menu(popup, service_var, *campus.get_service_keys(), width=20)
+    service_dd.pack(anchor="w", padx=16)
+
+    styled_label(popup, "Priority", font=FONT_LABEL, fg=FG_MUTED, bg=BG_MEDIUM).pack(anchor="w", padx=16, pady=(10, 2))
+    priority_dd = styled_option_menu(popup, priority_var, "1", "2", "3", width=20)
+    priority_dd.pack(anchor="w", padx=16)
+
+    desc_e = popup_field(popup, "Description")
+    values = [None, None, None, None]
+
+    def submit():
+        values[0] = building_var.get()
+        values[1] = service_var.get()
+        values[2] = priority_var.get()
+        values[3] = desc_e.get()
+        popup.destroy()
+
+    styled_button(popup, "Submit", submit, variant="primary").pack(pady=(8, 16), padx=16)
+    popup.wait_window()
+
+    if values[0] == "Building":
+        mb.showinfo("Service Queue Error", "Please select a building.")
+        return
+    if values[1] == "Service":
+        mb.showinfo("Service Queue Error", "Please select a service.")
+        return
+    if values[2] == "Priority":
+        mb.showinfo("Service Queue Error", "Please select a priority.")
+        return
+    if values[3] == None or values[3] == "":
+        mb.showinfo("Service Queue Error", "Please enter a description.")
+        return
+
+    campus.service_queue.addRequest(int(values[2]), values[3], values[0], values[1])
+    _log(
+        f"Added [{_priority_label(int(values[2]))}] – {values[3]}",
+        "emerg" if int(values[2]) == 1 else ("std" if int(values[2]) == 2 else "ok"),
+    )
+    refresh_table()
+
+def peek_next():
+    request = campus.service_queue.peakRequest()
+    if request == None:
+        _log("Queue is empty – nothing to preview.", "ts")
+        return
+
+    mb.showinfo(
+        "Next Service Request",
+        f"Priority: {_priority_label(request['priority'])}\n"
+        f"Building: {request['building']}\n"
+        f"Service: {request['service']}\n"
+        f"Description: {request['description']}"
+    )
+
     def refresh_table(*_):
         table.delete(*table.get_children())
-        node = service_pipeline.buffer.peek_tail()
-        i = 0
-        while node is not None:
-            r = node.val
-            if isinstance(r.request_data, tuple):
-                pri, desc = r.request_data
-                prio_text = _priority_label(pri)
-            else:
-                prio_text = "—"
-                desc = str(r.request_data)
-            table_insert(table, i, (r.position, prio_text, desc))
-            node = node.prev
-            i += 1
-
-    def _enqueue_demo_requests():
-        for priority, desc in _DEMO_REQUESTS:
-            service_pipeline.enque_request(
-                lambda p=priority, d=desc: _log(
-                    f"Processed [{_priority_label(p)}] – {d}",
-                    tag="emerg" if p == 1 else ("std" if p == 2 else "ok"),
-                ),
-                lambda: None,
-                (priority, desc),
-            )
-        _log(f"Enqueued {len(_DEMO_REQUESTS)} demo requests.", "ts")
-        refresh_table()
+        requests = campus.service_queue.showRequests()
+        for i, req in enumerate(requests):
+                table_insert(table, i, (
+                    req["order"],
+                    _priority_label(req["priority"]),
+                    req["description"]
+                ))
 
     def process_next():
-        if service_pipeline.buffer.get_len() == 0:
+        request = campus.service_queue.popRequest()
+        if request == None:
             _log("Queue is empty – nothing to process.", "ts")
             return
-        service_pipeline.deque_request()
+
+        campus.completed_services.append(request)
+        _log(
+            f"Processed [{_priority_label(request['priority'])}] – {request['description']}",
+            "emerg" if request["priority"] == 1 else ("std" if request["priority"] == 2 else "ok"),
+        )
         refresh_table()
 
-    def process_all():
-        count = 0
-        while service_pipeline.buffer.get_len() > 0:
-            service_pipeline.deque_request()
-            count += 1
-        _log(f"Processed all {count} remaining requests." if count else "Queue was already empty.", "ts")
-        refresh_table()
-
-    def _demo_step(remaining: int, saved_mode: str):
-        if remaining <= 0 or service_pipeline.buffer.get_len() == 0:
-            _demo_running[0] = False
-            global pipeline_mode
-            pipeline_mode = saved_mode
-            mode_label.config(text=f"Pipeline: {pipeline_mode}")
-            _log(f"─── Demo complete — pipeline restored to '{saved_mode}' mode ───", "ts")
-            refresh_table()
-            return
-        service_pipeline.deque_request()
-        refresh_table()
-        page.after(250, lambda: _demo_step(remaining - 1, saved_mode))
-
-    def run_demo():
-        global pipeline_mode
-        if _demo_running[0]:
-            _log("Demo already running – please wait.", "ts")
-            return
-        log_box.configure(state="normal")
-        log_box.delete("1.0", "end")
-        log_box.configure(state="disabled")
-        saved_mode = pipeline_mode
-        pipeline_mode = "Manual"
-        mode_label.config(text="Pipeline: Manual")
-        _log("═══ Starting Pipeline Demo (22 requests) ═══", "ts")
-        _log(f"Pipeline switched to Manual (was {saved_mode}) — requests will not auto-drain.", "ts")
-        _enqueue_demo_requests()
-        _demo_running[0] = True
-        page.after(300, lambda: _demo_step(len(_DEMO_REQUESTS), saved_mode))
-
-    def load_dummies():
-        global pipeline_mode
-        if _demo_running[0]:
-            _log("Demo is currently running. Wait for it to finish.", "ts")
-            return
-        pipeline_mode = "Manual"
-        mode_label.config(text="Pipeline: Manual")
-        _log("═══ Loading Dummy Data ═══", "ts")
-        _log("Pipeline switched to Manual — you can now process requests manually.", "ts")
-        _enqueue_demo_requests()
-
-    styled_button(ctrl_bar, "🚀  Run Demo",      run_demo,      variant="primary").pack(side="left", padx=sc(4))
-    styled_button(ctrl_bar, "📥  Load Dummies", load_dummies,  variant="default").pack(side="left", padx=sc(4))
-    styled_button(ctrl_bar, "▶  Process Next",  process_next,  variant="default").pack(side="left", padx=sc(4))
-    styled_button(ctrl_bar, "⏩  Process All",   process_all,   variant="default").pack(side="left", padx=sc(4))
-    styled_button(ctrl_bar, "⟳  Refresh",       refresh_table, variant="default").pack(side="left", padx=sc(4))
-
+    refresh_table()
     return page
 
 
