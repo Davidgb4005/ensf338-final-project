@@ -126,7 +126,6 @@ class Deque(Generic[T]):
         Returns reference to the current node at head of the queue, or None if empty.
         """
         if not self.head:
-            print("peek from empty deque")
             return None
         return self.head
 
@@ -135,7 +134,6 @@ class Deque(Generic[T]):
         Returns reference to the current node at tail of the queue, or None if empty.
         """
         if not self.tail:
-            print("peek from empty deque")
             return None
         return self.tail
 
