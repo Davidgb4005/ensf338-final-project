@@ -1019,7 +1019,7 @@ def generate_pages():
     pages["navigation"]         = build_nav_page(frame)
     pages["room_booking"]       = build_booking_page(frame)
     pages["request_processing"] = build_request_processing_page(frame)
-    pages["service_queue"]      = build_service_processing_page(frame)
+    pages["service_queue"]      = build_service_queue_page(frame)
     for name in ("completed_operation", "bonus"):
         pages[name] = build_placeholder_page(frame, name)
 
