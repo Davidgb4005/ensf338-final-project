@@ -514,6 +514,36 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         request_pipeline.enque_request(
             lambda: booking.update_booking(result[0], result[1],campus_info), _refresh_table, "Add Booking"
         )
+    def _add_AVL_booking():
+        day = validate_date(date_entry.get())
+        if day is None:
+            return
+        vals = _get_selected_row()
+        if vals is None:
+            return
+        if vals[0] != "Vacant":
+            mb.showinfo("Booking Error", f"Already booked for {vals[2]} – {vals[3]}.")
+            return
+        popup = popup_base("Add Booking")
+        name_e = popup_field(popup, "Booker Name")
+        type_e = popup_field(popup, "Booking Type")
+        result = [None, None]
+
+        def submit():
+            result[0] = name_e.get()
+            result[1] = type_e.get()
+            popup.destroy()
+
+        styled_button(popup, "Confirm Booking", submit, variant="primary").pack(pady=(sc(8), sc(16)), padx=sc(16))
+        popup.wait_window()
+        if not result[0] or not result[1]:
+            mb.showinfo("Booking Error", "Please fill in all fields.")
+            return
+        booking = _resolve_booking(vals)
+        campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
+        request_pipeline.enque_request(
+            lambda: booking.update_booking_avl(result[0], result[1],campus_info), _refresh_table, "Add Booking"
+        )
 
     def _delete_booking():
         vals = _get_selected_row()
@@ -528,6 +558,18 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
             lambda: booking.update_booking(None, "Vacant",campus_info), _refresh_table, "Delete Booking"
         )
 
+    def _delete_booking():
+        vals = _get_selected_row()
+        if vals is None:
+            return
+        if vals[0] == "Vacant":
+            mb.showinfo("Booking Error", f"No booking for {vals[2]} – {vals[3]}.")
+            return
+        booking = _resolve_booking(vals)
+        campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
+        request_pipeline.enque_request(
+            lambda: booking.update_booking_avl(None, "Vacant",campus_info), _refresh_table, "Delete Booking"
+        )
     def _add_service():
         b = _require_building()
         if b is None:
@@ -698,7 +740,9 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
 
     button_groups = [
         ("Bookings",  [("＋ Booking",  _add_booking,    "success"),
+                        ("＋ Booking(AVL)",  _add_AVL_booking,    "success"),
                        ("Search",      _search_bookings, "default"),
+                       ("－ Booking(AVL)",  _delete_booking, "danger"),
                        ("－ Booking",  _delete_booking, "danger")]),
         ("Services",  [("＋ Service",  _add_service,    "success"),
                        ("－ Service",  _delete_service, "danger")]),
@@ -741,11 +785,13 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
     end_dd.grid(row=1, column=1, sticky="w", padx=(sc(4),sc(4)), pady=(0,sc(4)))
 
     def _get_node_ids():
-        s = campus.campus_graph.get_node_id(start_var.get())
-        e = campus.campus_graph.get_node_id(end_var.get())
-        if s == e:
-            mb.showinfo("Navigation Error", "Start and end cannot be the same location.")
+        s = start_var.get()
+        e = end_var.get()
+        if s == e or s == "Start Location" or e =="End Location":
+            mb.showinfo("Navigation Error", "Please Select A Start And finish Location.")
             return None
+        s = campus.campus_graph.get_node_id(s)
+        e = campus.campus_graph.get_node_id(e)
         return s, e
 
     def submit():
@@ -767,12 +813,12 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
         path, steps = campus.campus_graph.find_path_steps(*nodes)
         closure = tv.animate_search(campus.campus_graph.nodes, steps, MAP_PATH)
         request_pipeline.enque_request(closure, lambda: None, "Navigation Rendering")
-        request_pipeline.enque_request(
-            lambda: campus.campus_graph.undo_buffer.append(closure),
-            lambda: None, "Navigation Undo Enqueue",
-        )
+
 
     def undo():
+        if campus.campus_graph.undo_buffer.items == 0:
+            mb.showinfo("Navigation Error", "Undo Queue Is empty")
+            return None
         request_pipeline.enque_request(
             lambda: campus.campus_graph.undo(), lambda: None, "Navigation Undo"
         )
