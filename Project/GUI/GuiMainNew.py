@@ -1059,10 +1059,10 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
             return
         try:
             if int(result[2]) > 3 or int(result[2]) < 1:
-                mb.showinfo("Add Service Error", "Please Insert a Number between 1(low) and 3(high) for prioity.")
+                mb.showinfo("Add Service Error", "Please Insert a Number between 3(low) and 1(high) for prioity.")
                 return  
         except ValueError:
-            mb.showinfo("Add Service Error", "Please Insert a Number between 1(low) and 3(high) for prioity.")
+            mb.showinfo("Add Service Error", "Please Insert a Number between 3(low) and 1(high) for prioity.")
             return
         closure = None
         match int(result[2]):
