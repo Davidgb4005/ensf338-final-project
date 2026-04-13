@@ -48,8 +48,7 @@ class request_pipeline(Generic[T]):
         The queue that stores all the requests.
     position_index: int
         Internal tracker for the number of items queued, assigning each sequential request with +1 position to the previous request.
-    auto_service: int
-        ?Placeholder attribute?
+
     
     Methods
     -------
@@ -66,7 +65,6 @@ class request_pipeline(Generic[T]):
         """
         self.buffer: dq.Deque[request_lambda_wrapper[T]] = dq.Deque()
         self.position_index = 1
-        self.auto_service = 0 
     
     def enque_request(self, function: Optional[Callable[[], Any]], refresh: Optional[Callable[[], Any]], request_data: T) -> None:
         """
@@ -90,6 +88,18 @@ class request_pipeline(Generic[T]):
         Dequeues the oldest request from the pipeline, then performs the request processing and request post-processing functions, if they exist.
         """
         current_request = self.buffer.pop_head()
+        if current_request is not None:
+            if current_request.function is not None:
+                current_request.function()
+            if current_request.refresh is not None:
+                current_request.refresh()
+            print(current_request.request_data)
+
+    def deque_request_tail(self): #This should have a return type of current_request, yea?
+        """
+        Dequeues the oldest request from the pipeline, then performs the request processing and request post-processing functions, if they exist.
+        """
+        current_request = self.buffer.pop_tail()
         if current_request is not None:
             if current_request.function is not None:
                 current_request.function()
