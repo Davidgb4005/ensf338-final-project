@@ -195,8 +195,8 @@ def draw_graph(nodes, img_path):
 
         ax.plot(nodes[i+1].x, nodes[i+1].y, "bo", markersize=5)
         if nodes[i].name:
-            ax.text(nodes[i].x, nodes[i].y, nodes[i].name, fontsize=6, color="blue")
-    ax.plot(nodes[i+1].x, nodes[i+1].y, "*", markersize=6,color="yellow")
+            ax.text(nodes[i].x, nodes[i].y, nodes[i].name, fontsize=10, color="black")
+    ax.plot(nodes[i+1].x, nodes[i+1].y, "*", markersize=16,color="black")
 
     plt.axis("off")
     plt.show()
@@ -216,7 +216,7 @@ def draw_graph_animated(nodes, img_path):
         plt.axis("off")
 
         # draw start node
-        ax.plot(nodes[0].x, nodes[0].y, "h", markersize=6, color="green")
+        ax.plot(nodes[0].x, nodes[0].y, "h", markersize=10, color="green")
 
         # draw up to current frame
         for i in range(frame):
@@ -229,12 +229,12 @@ def draw_graph_animated(nodes, img_path):
 
             if nodes[i].name:
                 ax.text(nodes[i].x, nodes[i].y, nodes[i].name,
-                        fontsize=6, color="blue")
+                        fontsize=10, color="blue")
 
         # final node highlight
         if frame > 0:
             ax.plot(nodes[frame].x, nodes[frame].y, "*",
-                    markersize=6, color="yellow")
+                    markersize=10, color="black")
 
     ani = FuncAnimation(
         fig,
@@ -280,12 +280,12 @@ def animate_search(nodes, steps, img_path):
                 fontsize=7
             )
             
-            ax.plot(n.x, n.y, "o", color=color, markersize=6)
+            ax.plot(n.x, n.y, "o", color=color, markersize=10)
             # display g and f near node
             ax.text(
                 n.x + 5, n.y + 5,
                 f"g={step['g']:.1f}\nf={step['f']:.1f}",
-                fontsize=7,
+                fontsize=15,
                 color="black"
             )
 
@@ -297,7 +297,7 @@ def animate_search(nodes, steps, img_path):
                 f"g: {step['g']:.2f}\n"
                 f"h: {step['h']:.2f}\n"
                 f"f: {step['f']:.2f}",
-                fontsize=10,
+                fontsize=15,
                 bbox=dict(facecolor="white", alpha=0.7)
             )
         # final path
@@ -307,8 +307,8 @@ def animate_search(nodes, steps, img_path):
                 ax.plot(
                     [path[i].x, path[i+1].x],
                     [path[i].y, path[i+1].y],
-                    color="yellow",
-                    linewidth=2
+                    color="black",
+                    linewidth=4
                 )
 
 
