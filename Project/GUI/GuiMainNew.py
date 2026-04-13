@@ -1120,9 +1120,7 @@ nav_items = [
     ("🗺  Navigation",     show_navigation),
     ("📅  Room Booking",   show_room_booking),
     ("🔧  Service Queue",  show_service_queue),
-    ("⚙  Requests",       show_request_processing),
-    ("✔  Completed Ops",  show_completed_operation),
-    ("★  Bonus",           show_bonus),
+    ("⚙  Requests",       show_request_processing)
 ]
 
 
