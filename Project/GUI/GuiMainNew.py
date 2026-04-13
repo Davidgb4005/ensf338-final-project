@@ -429,10 +429,11 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
     def _refresh_table(*_):
         day = validate_date(date_entry.get())
         if day is None:
+            mb.showinfo("Display Error", "Please Select A Future Date.")
             return
-        b, f, r = building_var.get(), get_floor()
-        if f is None or r is None:
-            mb.showinfo("Display Error", "Room is deleted. Reinitialize via Edit Room.")
+        b,f, r = building_var.get(),floor_var.get(), room_var.get()
+        if f == "Floor" or r == "Room" or b == "Building":
+            mb.showinfo("Display Error", "Please Select A Building, Floor and Room")
             return
         start = 0 if start_var.get() == "Start Time" else time_str_to_index(start_var.get())
         end   = TIME_INCREMENTS  if end_var.get() == "End Time" else time_str_to_index(end_var.get())
