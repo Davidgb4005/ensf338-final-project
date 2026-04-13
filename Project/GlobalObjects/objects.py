@@ -10,7 +10,8 @@ from ServiceSystem.service_queue import ServiceRequest as requests
 from ServiceSystem.service_queue import ServiceRequest
 import DataStructures.AVL as avl
 import json
-BOOKING_DAYS = 30
+from Config import config
+BOOKING_DAYS = config.BOOKING_DAYS
 
 CAMPUS_DATA = PROJECT_ROOT / "GlobalObjects"  / "campus_data.json"
 class Room:

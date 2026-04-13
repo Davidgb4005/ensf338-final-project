@@ -9,7 +9,7 @@ from DataStructures.PriorityHeap import PriorityHeap as heapq
 import itertools
 import DataStructures.LifoRingBuffer as LiFo
 import matplotlib.cm as cm
-
+from Config import config
 class Node:
     x = 0
     y = 0
@@ -49,7 +49,7 @@ class graph:
         self.nodes = []       
         self.id_name_pair = {}
         self.total_nodes = 0
-        self.undo_buffer = LiFo.LifoRingBuffer(10,None)
+        self.undo_buffer = LiFo.LifoRingBuffer(config.UNDO_CAPACITY,None)
 
     def append_node(self, n: Node):
         n.id = self.total_nodes

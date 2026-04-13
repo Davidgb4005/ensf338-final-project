@@ -18,11 +18,12 @@ import BookingSystem.room_booking as rb
 import DataStructures.AVL as avl
 import ServiceSystem.service_queue as svq
 
+from Config import config
 # ---------------------------------------------------------------------------
 # Platform scaling
 # ---------------------------------------------------------------------------
 IS_LINUX = platform.system() == "Linux"
-UI_SCALE = 0.82 if IS_LINUX else 1.5
+UI_SCALE = 1.25 if IS_LINUX else 0.9
 
 def sc(value: int) -> int:
     """Scale a pixel value for the current platform."""
@@ -100,7 +101,7 @@ def time_str_to_index(t: str) -> int:
     return int((h + m / 60) * (len(times) / 24))
 
 
-times = build_times(TIME_INCREMENTS)
+times = build_times(config.TIME_INCREMENTS)
 
 # ---------------------------------------------------------------------------
 # Styling helpers
@@ -555,10 +556,10 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         booking = _resolve_booking(vals)
         campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
         request_pipeline.enque_request(
-            lambda: booking.update_booking(None, "Vacant",campus_info), _refresh_table, "Delete Booking"
+            lambda: booking.update_booking(None, "Vacant",campus_info,booking), _refresh_table, "Delete Booking"
         )
 
-    def _delete_booking():
+    def _delete_avl_booking():
         vals = _get_selected_row()
         if vals is None:
             return
@@ -568,7 +569,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         booking = _resolve_booking(vals)
         campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
         request_pipeline.enque_request(
-            lambda: booking.update_booking_avl(None, "Vacant",campus_info), _refresh_table, "Delete Booking"
+            lambda: booking.update_booking_avl(None, "Vacant",campus_info,booking), _refresh_table, "Delete Booking"
         )
     def _add_service():
         b = _require_building()
@@ -721,18 +722,19 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
                 popup = popup_base("Results")
                 styled_label(popup, text="No Results Found").pack(padx=sc(16), pady=sc(10))
             else:
-                booking = booking.data
-                popup = popup_base("Results")
-                for text in [
-                    "Booking Start Time: " + booking.data.start_time,
-                    "Booking End Time: "   + booking.data.end_time,
-                    "Booker Name: "        + booking.data.booker_name,
-                    "Booking Type: "       + booking.data.booking_type,
-                    "Building Name: "      + booking.building,
-                    "Floor Number: "       + booking.floor,
-                    "Room Number: "        + booking.room,
-                ]:
-                    styled_label(popup, text=text).pack(anchor="w", padx=sc(16), pady=(sc(4), 0))
+                for i in booking.data:
+                    booking = i
+                    popup = popup_base("Results")
+                    for text in [
+                        "Booking Start Time: " + booking.data.start_time,
+                        "Booking End Time: "   + booking.data.end_time,
+                        "Booker Name: "        + booking.data.booker_name,
+                        "Booking Type: "       + booking.data.booking_type,
+                        "Building Name: "      + booking.building,
+                        "Floor Number: "       + booking.floor,
+                        "Room Number: "        + booking.room,
+                    ]:
+                        styled_label(popup, text=text).pack(anchor="w", padx=sc(16), pady=(sc(4), 0))
             styled_button(popup, "Done", popup.destroy, variant="success").pack(pady=(sc(8), sc(16)), padx=sc(16))
             popup.wait_window()
 
@@ -742,7 +744,7 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         ("Bookings",  [("＋ Booking",  _add_booking,    "success"),
                         ("＋ Booking(AVL)",  _add_AVL_booking,    "success"),
                        ("Search",      _search_bookings, "default"),
-                       ("－ Booking(AVL)",  _delete_booking, "danger"),
+                       ("－ Booking(AVL)",  _delete_avl_booking, "danger"),
                        ("－ Booking",  _delete_booking, "danger")]),
         ("Services",  [("＋ Service",  _add_service,    "success"),
                        ("－ Service",  _delete_service, "danger")]),
