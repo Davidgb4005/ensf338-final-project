@@ -88,7 +88,7 @@ current_page     = None
 def build_times(total_increments: int) -> list[str]:
     result = []
     split = 24 / total_increments
-    for i in range(total_increments):
+    for i in range(total_increments+1):
         hours   = i * split
         minutes = (hours * 60) % 60 if hours != 0 else 0
         result.append(f"{int(np.floor(hours)):02d}:{int(minutes):02d}")
