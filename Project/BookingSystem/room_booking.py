@@ -72,25 +72,9 @@ class HourlyBooking:
             booking_search.insert(avl.Node(avl.hash_str_to_int(booker_name),campus_info))
         self.booker_name = booker_name
         self.booking_type = booking_type
-
-
-BOOKER_NAMES = [
-    "Alice Johnson", "Bob Smith", "Carol White", "David Lee", "Emma Davis",
-    "Frank Miller", "Grace Wilson", "Henry Moore", "Isabel Taylor", "Jack Brown",
-    "Karen Clark", "Liam Harris", "Mia Lewis", "Noah Walker", "Olivia Hall",
-    "Paul Allen", "Quinn Young", "Rachel King", "Sam Wright", "Tina Scott"
-]
-
-BOOKING_TYPES = ["Study", "Conference", "Lecture", "Lab Session", "Office Hours", "Meeting", "Exam Review"]        
 class DailyBooking:
     def __init__(self, fill_random=True):
         global times
         self.hourly_bookings = []
-        for i in range(len(times) - 1):
-            if fill_random and rd.random() < 0.3:
-                name = rd.choice(BOOKER_NAMES)
-                btype = rd.choice(BOOKING_TYPES)
-                self.hourly_bookings.append(HourlyBooking(times[i], times[i+1], name, btype))
-            else:
-                self.hourly_bookings.append(HourlyBooking(times[i], times[i+1], None, "Vacant"))
-
+        for i in range(len(times)-1): # 24/48 gives half hour incrmeents
+            self.hourly_bookings.append(HourlyBooking(times[i],times[i+1],None))
