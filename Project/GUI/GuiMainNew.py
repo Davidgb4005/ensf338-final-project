@@ -1054,15 +1054,15 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
 
         styled_button(popup, "Log Service Call", submit, variant="primary").pack(pady=(sc(8), sc(16)), padx=sc(16))
         popup.wait_window()
-        if not result[0] or not result[1] or not result[2]:
+        if not result[1] or not result[2]:
             mb.showinfo("Add Service Error", "Please fill in all fields.")
             return
         try:
             if int(result[2]) > 3 or int(result[2]) < 1:
-                mb.showinfo("Add Service Error", "Please Insert a Number between 1(low) and 3(high) for prioity.")
+                mb.showinfo("Add Service Error", "Please Insert a Number between 3(low) and 1(high) for prioity.")
                 return  
         except ValueError:
-            mb.showinfo("Add Service Error", "Please Insert a Number between 1(low) and 3(high) for prioity.")
+            mb.showinfo("Add Service Error", "Please Insert a Number between 3(low) and 1(high) for prioity.")
             return
         closure = None
         match int(result[2]):
@@ -1073,7 +1073,7 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
                             tag="emerg",
                         ),
                         lambda: None,
-                        (_priority_label(int(result[2])), result[0]),
+                        (_priority_label(int(result[2])), result[1]),
                     )
             case 2:
                 closure = lambda:service_pipeline_med.enque_request(
@@ -1082,7 +1082,7 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
                             tag="std",
                         ),
                         lambda: None,
-                        (_priority_label(int(result[2])), result[0]),
+                        (_priority_label(int(result[2])), result[1]),
                     )
             case 3:
                 closure = lambda:service_pipeline_low.enque_request(
@@ -1091,7 +1091,7 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
                             tag="ok",
                         ),
                         lambda: None,
-                        (_priority_label(int(result[2])), result[0]),
+                        (_priority_label(int(result[2])), result[1]),
                     )
         request_pipeline.enque_request(closure,refresh_table,"Add Service Request")
 
