@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
- 
+import BookingSystem.room_booking as rb
  
 class Node:
     def __init__(self, key, data):
         self.key = key
-        self.data = data
+        self.data = []
+        self.data.append(data)
  
  
 class AVLTree:
@@ -58,37 +59,57 @@ class AVLTree:
     def _insert(self, root, node):
         if root is None:
             return node
+
         if node.key < root.key:
             root._avl_left = self._insert(root._avl_left, node)
         elif node.key > root.key:
             root._avl_right = self._insert(root._avl_right, node)
         else:
-            node._avl_left = root._avl_left
-            node._avl_right = root._avl_right
-            node._avl_height = root._avl_height
-            return node
+            root.data.extend(node.data)   # <-- key fix
+            return root
+
         return self._rebalance(root)
  
-    def _delete(self, root, key):
+    def _delete(self, root, key, obj):
         if root is None:
             return None
+
         if key < root.key:
-            root._avl_left = self._delete(root._avl_left, key)
+            root._avl_left = self._delete(root._avl_left, key, obj)
+
         elif key > root.key:
-            root._avl_right = self._delete(root._avl_right, key)
+            root._avl_right = self._delete(root._avl_right, key, obj)
+
         else:
+            for i in root.data:
+                if obj is i.data:
+                    root.data.remove(i)
+
+            if len(root.data) > 0:
+                return root
+
             if root._avl_left is None:
                 return root._avl_right
+
             if root._avl_right is None:
                 return root._avl_left
+
             successor = self._min_node(root._avl_right)
-            root._avl_right = self._delete(root._avl_right, successor.key)
+
+            root._avl_right = self._delete(
+                root._avl_right,
+                successor.key,
+                successor.data[0] if successor.data else None
+            )
+
             successor._avl_left = root._avl_left
             successor._avl_right = root._avl_right
             successor._avl_height = root._avl_height
+
             root = successor
+
         return self._rebalance(root)
- 
+    
     def _search(self, root, key):
         if root is None or root.key == key:
             return root
@@ -111,11 +132,16 @@ class AVLTree:
         self._init(node)
         self._root = self._insert(self._root, node)
  
-    def delete(self, key):
-        self._root = self._delete(self._root, key)
+    def delete(self, key,object):
+        self._root = self._delete(self._root, key,object)
  
     def search(self, key):
-        return self._search(self._root, key)
+        node:Node =  self._search(self._root, key)
+        if node == None:
+            return None
+        for i in node.data:
+            rb.print_daily_booking(i)
+        return node
  
     def inorder(self):
         result = []
@@ -141,7 +167,6 @@ class AVLTree:
     def __contains__(self, key):
         return self.search(key) is not None
  
-    # ── Visualisation helpers ─────────────────────────────────────────────────
  
     def _get_positions(self, node, depth=0, counter=None):
         if counter is None:
@@ -271,7 +296,7 @@ class AVLTree:
         plt.tight_layout()
         plt.show()
  
-    def delete_visu(self, key):
+    def delete_visu(self, key,booking):
         fig, axes = plt.subplots(1, 3, figsize=(15, 6))
         fig.patch.set_facecolor("#0f1117")
         fig.suptitle(f"AVL Delete  ->  key = {key}",
@@ -295,7 +320,7 @@ class AVLTree:
                         highlight_key=key, highlight_color="#e03131",
                         title=f"Removing node {key} ...")
  
-        self._root = self._delete(self._root, key)
+        self._root = self._delete(self._root, key,booking)
  
         self._draw_tree(axes[2], self._root,
                         title=f"After rebalancing  (height={self._root._avl_height if self._root else 0})")

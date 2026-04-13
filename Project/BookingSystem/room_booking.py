@@ -9,6 +9,7 @@ import random as rd
 import DataStructures.LifoRingBuffer as lifo
 import RequestPipeline.request_pipeline as rp
 import DataStructures.AVL as avl
+from Config import config
 
 
 def helper_build_times(total_increments):
@@ -22,7 +23,7 @@ def helper_build_times(total_increments):
         hours = np.floor(i * splits)
         times.append(f"{int(hours):02d}:{(int)(miniutes):02d}")
     return(times)
-times = helper_build_times(48)
+times = helper_build_times(config.TIME_INCREMENTS)
 
 
 class CampusWraper():
@@ -74,17 +75,17 @@ class HourlyBooking:
         self.end_time =end_time
         self.booker_name = booker_name
         self.booking_type = booking_type
-    def update_booking(self,booker_name, booking_type,campus_info):
+    def update_booking(self,booker_name, booking_type,campus_info,booking=None):
         if booker_name == None:
-            booking_search.delete(avl.hash_str_to_int(self.booker_name))
+            booking_search.delete(avl.hash_str_to_int(self.booker_name),booking)
         else:
             campus_info.data = self
             booking_search.insert(avl.Node(avl.hash_str_to_int(booker_name),campus_info))
         self.booker_name = booker_name
         self.booking_type = booking_type
-    def update_booking_avl(self,booker_name, booking_type,campus_info):
+    def update_booking_avl(self,booker_name, booking_type,campus_info,booking=None):
         if booker_name == None:
-            booking_search.delete_visu(avl.hash_str_to_int(self.booker_name))
+            booking_search.delete_visu(avl.hash_str_to_int(self.booker_name),booking)
         else:
             campus_info.data = self
             booking_search.insert_visu(avl.Node(avl.hash_str_to_int(booker_name),campus_info))
@@ -115,10 +116,15 @@ class DailyBooking:
         available_names = BOOKER_NAMES.copy()
         rd.shuffle(available_names)
         for i in range(len(times) - 1):
-            if fill_random and available_names and rd.random() < 0.3:
+            if fill_random and available_names and rd.random() < config.BOOKING_DENSITY:
                 name = available_names.pop()
                 btype = rd.choice(BOOKING_TYPES)
                 self.hourly_bookings.append(HourlyBooking(times[i], times[i+1], name, btype))
-                #booking_search.insert(avl.Node(avl.hash_str_to_int(name), campus_info))
+                if config.DEMO_POPULATE_AVL:
+                    booking_search.insert(avl.Node(avl.hash_str_to_int(name), campus_info))
             else:
                 self.hourly_bookings.append(HourlyBooking(times[i], times[i+1], None, "Vacant"))
+    
+def print_daily_booking(booking:CampusWraper):
+    print("Building: ",booking.building," Floor: ",booking.floor," Room: ",booking.room)
+    print("Name: ",booking.data.booker_name," Type: ",booking.data.booking_type," Start Time: ",booking.data.start_time," End Time: ",booking.data.end_time)
