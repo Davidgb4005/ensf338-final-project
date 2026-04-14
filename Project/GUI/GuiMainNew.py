@@ -877,10 +877,6 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
     return page
 
 
-# ---------------------------------------------------------------------------
-# Page builder: Service Processing
-# ---------------------------------------------------------------------------
-
 _DEMO_REQUESTS = [
     (1, "Emergency – Fire alarm trigger in ICT"),
     (1, "Emergency – Medical assistance at Library"),
@@ -1151,13 +1147,6 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
     return page
 
 
-def build_bonus_page(parent: tk.Frame):
-    pass
-
-
-# ---------------------------------------------------------------------------
-# Placeholder pages
-# ---------------------------------------------------------------------------
 
 def build_placeholder_page(parent: tk.Frame, name: str) -> tk.Frame:
     page = styled_frame(parent, bg=BG_MEDIUM)
@@ -1166,10 +1155,6 @@ def build_placeholder_page(parent: tk.Frame, name: str) -> tk.Frame:
         font=FONT_TITLE, fg=FG_MUTED, bg=BG_MEDIUM,
     ).pack(expand=True)
     return page
-
-# ---------------------------------------------------------------------------
-# Page management
-# ---------------------------------------------------------------------------
 
 def generate_pages():
     global pages
@@ -1193,12 +1178,10 @@ def show_navigation():          show_page("navigation")
 def show_room_booking():        show_page("room_booking")
 def show_service_queue():       show_page("service_queue")
 def show_request_processing():  show_page("request_processing")
-def show_completed_operation(): show_page("completed_operation")
+def show_fast_lookup():         show_page("fast_lookup")
 def show_bonus():               show_page("bonus")
 
-# ---------------------------------------------------------------------------
-# Request pipeline
-# ---------------------------------------------------------------------------
+
 
 def toggle_pipeline_mode():
     global pipeline_mode
@@ -1223,9 +1206,6 @@ def request_pipeline_caller():
 
 
 
-# ---------------------------------------------------------------------------
-# Root window
-# ---------------------------------------------------------------------------
 
 root = tk.Tk()
 root.title("UCalgary Campus Manager")
@@ -1262,10 +1242,10 @@ tk.Frame(sidebar, bg=BORDER, width=1).pack(side="right", fill="y")
 _nav_btns = []
 
 nav_items = [
-    ("🗺  Navigation",     show_navigation),
-    ("📅  Room Booking",   show_room_booking),
-    ("🔧  Service Queue",  show_service_queue),
-    ("⚙  Requests",       show_request_processing)
+    ("Navigation",     show_navigation),
+    ("Room Booking",   show_room_booking),
+    ("Service Queue",  show_service_queue),
+    ("Requests",       show_request_processing),
 ]
 
 
