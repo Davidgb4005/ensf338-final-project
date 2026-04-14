@@ -18,6 +18,7 @@ class ServiceRequest(PriorityHeap[tuple[int, int, str]]):
         popRequest() -> str | None: Implements heapPop in order to return a description of current highest priority request.
         showRequests() -> list: Returns shallow copy of the list of requests in queue.
     """
+
     def __init__(self) -> None:
         """
         Initializes an object, creating an empty list that will be used as the min heap.
@@ -53,24 +54,30 @@ class ServiceRequest(PriorityHeap[tuple[int, int, str]]):
             "service": service
         }
         self.heapPush((priority, item["order"], item))
-
         
-    def popRequest(self) -> str | None:
+    def popRequest(self):
         """
         Method to return current highest priority request.
         Returns a string with a description of the current highest priority.
         Does NOT return priority level.
         """
         if self.isEmpty():
-            return "No service requests currently."
-        request: tuple[int, int, str] | None = self.heapPop() #Should return a tuple like (priority int, counter, request str)
-        if request: #if request not a tuple. shouldnt happen but apparently there's an error unless I put an if statement.
-            _, _, desc = request
-            return desc
-        return None #this should literally never happen because of the isEmpty check, but better safe than sorry.
+            return None
+        request = self.heapPop()
+        if request == None:
+            return None
+        return request[2]
 
-    def showRequests(self) -> list[tuple[int, int, str]]:
+    def peakRequest(self):
+        if self.isEmpty():
+            return None
+        return self.tree[0][2]
+    
+    def showRequests(self):
         """
         Returns a copy of the list of service requests in the queue currently.
         """
-        return self.tree.copy() #the copy() is to enforce encapsulation, without it the actual tree of the object is mutable
+        values = []
+        for i in self.tree:
+            values.append(i[2])
+        return values

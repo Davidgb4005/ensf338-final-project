@@ -16,12 +16,14 @@ import RequestPipeline.request_pipeline as rp
 import NavigationSystem.traversal as tv
 import BookingSystem.room_booking as rb
 import DataStructures.AVL as avl
+import ServiceSystem.service_queue as svq
 
+from Config import config
 # ---------------------------------------------------------------------------
 # Platform scaling
 # ---------------------------------------------------------------------------
 IS_LINUX = platform.system() == "Linux"
-UI_SCALE = 0.82 if IS_LINUX else 1.5
+UI_SCALE = 1.25 if IS_LINUX else 0.9
 
 def sc(value: int) -> int:
     """Scale a pixel value for the current platform."""
@@ -72,7 +74,10 @@ DD_WIDTH = 16
 # ---------------------------------------------------------------------------
 campus           = obj.Campus()
 request_pipeline = rp.request_pipeline()
-service_pipeline = rp.request_pipeline()
+service_pipeline_low = rp.request_pipeline()
+service_pipeline_med = rp.request_pipeline()
+service_pipeline_high = rp.request_pipeline()
+
 pipeline_mode    = "Auto"
 pages: dict      = {}
 current_page     = None
@@ -84,7 +89,7 @@ current_page     = None
 def build_times(total_increments: int) -> list[str]:
     result = []
     split = 24 / total_increments
-    for i in range(total_increments):
+    for i in range(total_increments+1):
         hours   = i * split
         minutes = (hours * 60) % 60 if hours != 0 else 0
         result.append(f"{int(np.floor(hours)):02d}:{int(minutes):02d}")
@@ -96,7 +101,7 @@ def time_str_to_index(t: str) -> int:
     return int((h + m / 60) * (len(times) / 24))
 
 
-times = build_times(TIME_INCREMENTS)
+times = build_times(config.TIME_INCREMENTS)
 
 # ---------------------------------------------------------------------------
 # Styling helpers
@@ -425,6 +430,11 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
     def _refresh_table(*_):
         day = validate_date(date_entry.get())
         if day is None:
+            mb.showinfo("Display Error", "Please Select A Future Date.")
+            return
+        b,f, r = building_var.get(),floor_var.get(), room_var.get()
+        if f == "Floor" or r == "Room" or b == "Building":
+            mb.showinfo("Display Error", "Please Select A Building, Floor and Room")
             return
         start = 0 if start_var.get() == "Start Time" else time_str_to_index(start_var.get())
         end   = TIME_INCREMENTS  if end_var.get() == "End Time" else time_str_to_index(end_var.get())
@@ -505,6 +515,36 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         request_pipeline.enque_request(
             lambda: booking.update_booking(result[0], result[1],campus_info), _refresh_table, "Add Booking"
         )
+    def _add_AVL_booking():
+        day = validate_date(date_entry.get())
+        if day is None:
+            return
+        vals = _get_selected_row()
+        if vals is None:
+            return
+        if vals[0] != "Vacant":
+            mb.showinfo("Booking Error", f"Already booked for {vals[2]} – {vals[3]}.")
+            return
+        popup = popup_base("Add Booking")
+        name_e = popup_field(popup, "Booker Name")
+        type_e = popup_field(popup, "Booking Type")
+        result = [None, None]
+
+        def submit():
+            result[0] = name_e.get()
+            result[1] = type_e.get()
+            popup.destroy()
+
+        styled_button(popup, "Confirm Booking", submit, variant="primary").pack(pady=(sc(8), sc(16)), padx=sc(16))
+        popup.wait_window()
+        if not result[0] or not result[1]:
+            mb.showinfo("Booking Error", "Please fill in all fields.")
+            return
+        booking = _resolve_booking(vals)
+        campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
+        request_pipeline.enque_request(
+            lambda: booking.update_booking_avl(result[0], result[1],campus_info), _refresh_table, "Add Booking"
+        )
 
     def _delete_booking():
         vals = _get_selected_row()
@@ -516,9 +556,21 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
         booking = _resolve_booking(vals)
         campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
         request_pipeline.enque_request(
-            lambda: booking.update_booking(None, "Vacant",campus_info), _refresh_table, "Delete Booking"
+            lambda: booking.update_booking(None, "Vacant",campus_info,booking), _refresh_table, "Delete Booking"
         )
 
+    def _delete_avl_booking():
+        vals = _get_selected_row()
+        if vals is None:
+            return
+        if vals[0] == "Vacant":
+            mb.showinfo("Booking Error", f"No booking for {vals[2]} – {vals[3]}.")
+            return
+        booking = _resolve_booking(vals)
+        campus_info = rb.CampusWraper(building_var.get(),floor_var.get(),room_var.get())
+        request_pipeline.enque_request(
+            lambda: booking.update_booking_avl(None, "Vacant",campus_info,booking), _refresh_table, "Delete Booking"
+        )
     def _add_service():
         b = _require_building()
         if b is None:
@@ -670,18 +722,19 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
                 popup = popup_base("Results")
                 styled_label(popup, text="No Results Found").pack(padx=sc(16), pady=sc(10))
             else:
-                booking = booking.data
-                popup = popup_base("Results")
-                for text in [
-                    "Booking Start Time: " + booking.data.start_time,
-                    "Booking End Time: "   + booking.data.end_time,
-                    "Booker Name: "        + booking.data.booker_name,
-                    "Booking Type: "       + booking.data.booking_type,
-                    "Building Name: "      + booking.building,
-                    "Floor Number: "       + booking.floor,
-                    "Room Number: "        + booking.room,
-                ]:
-                    styled_label(popup, text=text).pack(anchor="w", padx=sc(16), pady=(sc(4), 0))
+                for i in booking.data:
+                    booking = i
+                    popup = popup_base("Results")
+                    for text in [
+                        "Booking Start Time: " + booking.data.start_time,
+                        "Booking End Time: "   + booking.data.end_time,
+                        "Booker Name: "        + booking.data.booker_name,
+                        "Booking Type: "       + booking.data.booking_type,
+                        "Building Name: "      + booking.building,
+                        "Floor Number: "       + booking.floor,
+                        "Room Number: "        + booking.room,
+                    ]:
+                        styled_label(popup, text=text).pack(anchor="w", padx=sc(16), pady=(sc(4), 0))
             styled_button(popup, "Done", popup.destroy, variant="success").pack(pady=(sc(8), sc(16)), padx=sc(16))
             popup.wait_window()
 
@@ -689,7 +742,9 @@ def build_booking_page(parent: tk.Frame) -> tk.Frame:
 
     button_groups = [
         ("Bookings",  [("＋ Booking",  _add_booking,    "success"),
+                        ("＋ Booking(AVL)",  _add_AVL_booking,    "success"),
                        ("Search",      _search_bookings, "default"),
+                       ("－ Booking(AVL)",  _delete_avl_booking, "danger"),
                        ("－ Booking",  _delete_booking, "danger")]),
         ("Services",  [("＋ Service",  _add_service,    "success"),
                        ("－ Service",  _delete_service, "danger")]),
@@ -732,11 +787,13 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
     end_dd.grid(row=1, column=1, sticky="w", padx=(sc(4),sc(4)), pady=(0,sc(4)))
 
     def _get_node_ids():
-        s = campus.campus_graph.get_node_id(start_var.get())
-        e = campus.campus_graph.get_node_id(end_var.get())
-        if s == e:
-            mb.showinfo("Navigation Error", "Start and end cannot be the same location.")
+        s = start_var.get()
+        e = end_var.get()
+        if s == e or s == "Start Location" or e =="End Location":
+            mb.showinfo("Navigation Error", "Please Select A Start And finish Location.")
             return None
+        s = campus.campus_graph.get_node_id(s)
+        e = campus.campus_graph.get_node_id(e)
         return s, e
 
     def submit():
@@ -758,12 +815,12 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
         path, steps = campus.campus_graph.find_path_steps(*nodes)
         closure = tv.animate_search(campus.campus_graph.nodes, steps, MAP_PATH)
         request_pipeline.enque_request(closure, lambda: None, "Navigation Rendering")
-        request_pipeline.enque_request(
-            lambda: campus.campus_graph.undo_buffer.append(closure),
-            lambda: None, "Navigation Undo Enqueue",
-        )
+
 
     def undo():
+        if campus.campus_graph.undo_buffer.items == 0:
+            mb.showinfo("Navigation Error", "Undo Queue Is empty")
+            return None
         request_pipeline.enque_request(
             lambda: campus.campus_graph.undo(), lambda: None, "Navigation Undo"
         )
@@ -827,26 +884,24 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
 _DEMO_REQUESTS = [
     (1, "Emergency – Fire alarm trigger in ICT"),
     (1, "Emergency – Medical assistance at Library"),
-    (2, "Navigate: AB → TFDL"),
-    (2, "Navigate: ICT → SH"),
-    (2, "Navigate: KNA → DC"),
-    (2, "Navigate: MFH → ENA"),
-    (2, "Navigate: BI → MH"),
-    (2, "Navigate: HNSC → OO"),
-    (2, "Navigate: CCIT → MSC"),
-    (2, "Navigate: EDC → AU"),
-    (3, "Room booking – ICT 201 for study session"),
-    (3, "Room booking – TFDL L3-12 for group project"),
-    (3, "Room booking – MS 405 for exam review"),
-    (3, "IT support ticket – projector in ICT-121 offline"),
-    (3, "IT support ticket – wifi down in Craigie Hall"),
-    (3, "Maintenance – broken heater in Residence"),
-    (3, "Maintenance – elevator fault in Science A"),
-    (3, "Maintenance – parking gate malfunction"),
-    (3, "Info lookup – room capacity for ENA 301"),
-    (3, "Info lookup – services available at MacEwan Hall"),
-    (3, "Info lookup – events today in Social Sciences"),
-    (3, "Low priority – general feedback submission"),
+    (1, "Emergency – Gas leak reported in Science A"),
+    (1, "Emergency – Security incident at MacEwan Hall"),
+    (2, "Maintenance – broken heater in Residence"),
+    (2, "Maintenance – elevator fault in Science A"),
+    (2, "Maintenance – parking gate malfunction"),
+    (2, "Maintenance – flickering lights in Craigie Hall"),
+    (2, "Maintenance – water leak reported in TFDL"),
+    (3, "IT support – projector in ICT-121 offline"),
+    (3, "IT support – wifi down in Craigie Hall"),
+    (3, "IT support – computer lab terminals unresponsive in MS"),
+    (3, "IT support – card reader malfunction at ENA entrance"),
+    (3, "Facilities – request extra chairs for ENA 301"),
+    (3, "Facilities – cleaning request for Social Sciences lobby"),
+    (3, "Facilities – broken door lock in ICT"),
+    (3, "Facilities – vending machine out of service in MH"),
+    (3, "General feedback – noise complaint in Library"),
+    (3, "General feedback – temperature too cold in CCIT"),
+    (3, "General feedback – accessibility concern at BI entrance"),
 ]
 
 
@@ -903,7 +958,7 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
 
     def refresh_table(*_):
         table.delete(*table.get_children())
-        node = service_pipeline.buffer.peek_tail()
+        node = service_pipeline_high.buffer.peek_head()
         i = 0
         while node is not None:
             r = node.val
@@ -914,39 +969,103 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
                 prio_text = "—"
                 desc = str(r.request_data)
             table_insert(table, i, (r.position, prio_text, desc))
-            node = node.prev
+            node = node.next
             i += 1
+        node = service_pipeline_med.buffer.peek_head()
+        i = 0
+        while node is not None:
+            r = node.val
+            if isinstance(r.request_data, tuple):
+                pri, desc = r.request_data
+                prio_text = _priority_label(pri)
+            else:
+                prio_text = "—"
+                desc = str(r.request_data)
+            table_insert(table, i, (r.position, prio_text, desc))
+            node = node.next
+            i += 1
+        node = service_pipeline_low.buffer.peek_head()
+        i = 0
+        while node is not None:
+            r = node.val
+            if isinstance(r.request_data, tuple):
+                pri, desc = r.request_data
+                prio_text = _priority_label(pri)
+            else:
+                prio_text = "—"
+                desc = str(r.request_data)
+            table_insert(table, i, (r.position, prio_text, desc))
+            node = node.next
+            i += 1
+
+
+
 
     def _enqueue_demo_requests():
         for priority, desc in _DEMO_REQUESTS:
-            service_pipeline.enque_request(
-                lambda p=priority, d=desc: _log(
-                    f"Processed [{_priority_label(p)}] – {d}",
-                    tag="emerg" if p == 1 else ("std" if p == 2 else "ok"),
-                ),
-                lambda: None,
-                (priority, desc),
-            )
+            match priority:
+                case 1:
+                    service_pipeline_high.enque_request(
+                        lambda p=priority, d=desc: _log(
+                            f"Processed [{_priority_label(p)}] – {d}",
+                            tag="emerg",
+                        ),
+                        lambda: None,
+                        (priority, desc),
+                    )
+                case 2:
+                    service_pipeline_med.enque_request(
+                        lambda p=priority, d=desc: _log(
+                            f"Processed [{_priority_label(p)}] – {d}",
+                            tag="std",
+                        ),
+                        lambda: None,
+                        (priority, desc),
+                    )
+                case 3:
+                    service_pipeline_low.enque_request(
+                        lambda p=priority, d=desc: _log(
+                            f"Processed [{_priority_label(p)}] – {d}",
+                            tag="ok",
+                        ),
+                        lambda: None,
+                        (priority, desc),
+                    )
         _log(f"Enqueued {len(_DEMO_REQUESTS)} demo requests.", "ts")
         refresh_table()
 
     def process_next():
-        if service_pipeline.buffer.get_len() == 0:
+        closure = lambda : process_next_closure()
+        request_pipeline.enque_request(closure,refresh_table,"Process Service Request")
+
+    def process_next_closure():
+        closure = None
+        rt = 0
+        if service_pipeline_high.buffer.get_len() != 0:
+            service_pipeline_high.deque_request()
+            rt = 1
+        elif service_pipeline_med.buffer.get_len() != 0:
+            service_pipeline_med.deque_request()
+            rt = 1
+        elif service_pipeline_low.buffer.get_len() != 0:
+            service_pipeline_low.deque_request()
+            rt = 1
+        else:
             _log("Queue is empty – nothing to process.", "ts")
-            return
-        service_pipeline.deque_request()
-        refresh_table()
+            rt = 0
+        return rt
 
     def process_all():
         count = 0
-        while service_pipeline.buffer.get_len() > 0:
-            service_pipeline.deque_request()
+        status_code = 1
+        while status_code != 0:
+            status_code = process_next()
             count += 1
         _log(f"Processed all {count} remaining requests." if count else "Queue was already empty.", "ts")
         refresh_table()
 
     def _demo_step(remaining: int, saved_mode: str):
-        if remaining <= 0 or service_pipeline.buffer.get_len() == 0:
+        if remaining <= 0 or service_pipeline_low.buffer.get_len() == 0:
             _demo_running[0] = False
             global pipeline_mode
             pipeline_mode = saved_mode
@@ -954,42 +1073,79 @@ def build_service_processing_page(parent: tk.Frame) -> tk.Frame:
             _log(f"─── Demo complete — pipeline restored to '{saved_mode}' mode ───", "ts")
             refresh_table()
             return
-        service_pipeline.deque_request()
+        process_next()
         refresh_table()
         page.after(250, lambda: _demo_step(remaining - 1, saved_mode))
 
-    def run_demo():
-        global pipeline_mode
-        if _demo_running[0]:
-            _log("Demo already running – please wait.", "ts")
-            return
-        log_box.configure(state="normal")
-        log_box.delete("1.0", "end")
-        log_box.configure(state="disabled")
-        saved_mode = pipeline_mode
-        pipeline_mode = "Manual"
-        mode_label.config(text="Pipeline: Manual")
-        _log("═══ Starting Pipeline Demo (22 requests) ═══", "ts")
-        _log(f"Pipeline switched to Manual (was {saved_mode}) — requests will not auto-drain.", "ts")
-        _enqueue_demo_requests()
-        _demo_running[0] = True
-        page.after(300, lambda: _demo_step(len(_DEMO_REQUESTS), saved_mode))
+
 
     def load_dummies():
         global pipeline_mode
         if _demo_running[0]:
             _log("Demo is currently running. Wait for it to finish.", "ts")
             return
-        pipeline_mode = "Manual"
-        mode_label.config(text="Pipeline: Manual")
         _log("═══ Loading Dummy Data ═══", "ts")
-        _log("Pipeline switched to Manual — you can now process requests manually.", "ts")
         _enqueue_demo_requests()
 
-    styled_button(ctrl_bar, "🚀  Run Demo",      run_demo,      variant="primary").pack(side="left", padx=sc(4))
+    def add_service():
+
+        popup = popup_base("Add Service")
+        description_e = popup_field(popup, "Description")
+        prio_e = popup_field(popup, "Priority")
+        result = [None,None, None]
+
+        def submit():
+            result[0] = None
+            result[1] = description_e.get()
+            result[2] = prio_e.get()
+            popup.destroy()
+
+        styled_button(popup, "Log Service Call", submit, variant="primary").pack(pady=(sc(8), sc(16)), padx=sc(16))
+        popup.wait_window()
+        if not result[1] or not result[2]:
+            mb.showinfo("Add Service Error", "Please fill in all fields.")
+            return
+        try:
+            if int(result[2]) > 3 or int(result[2]) < 1:
+                mb.showinfo("Add Service Error", "Please Insert a Number between 3(low) and 1(high) for prioity.")
+                return  
+        except ValueError:
+            mb.showinfo("Add Service Error", "Please Insert a Number between 3(low) and 1(high) for prioity.")
+            return
+        closure = None
+        match int(result[2]):
+            case 1:
+                closure = lambda:service_pipeline_high.enque_request(
+                        lambda p=_priority_label(int(result[2])), d=result[1]: _log(
+                            f"Processed [{_priority_label(int(result[2]))}] – {d}",
+                            tag="emerg",
+                        ),
+                        lambda: None,
+                        (_priority_label(int(result[2])), result[1]),
+                    )
+            case 2:
+                closure = lambda:service_pipeline_med.enque_request(
+                        lambda p=_priority_label(int(result[2])), d=result[1]: _log(
+                            f"Processed [{_priority_label(int(result[2]))}] – {d}",
+                            tag="std",
+                        ),
+                        lambda: None,
+                        (_priority_label(int(result[2])), result[1]),
+                    )
+            case 3:
+                closure = lambda:service_pipeline_low.enque_request(
+                        lambda p=_priority_label(int(result[2])), d=result[1]: _log(
+                            f"Processed [{_priority_label(int(result[2]))}] – {d}",
+                            tag="ok",
+                        ),
+                        lambda: None,
+                        (_priority_label(int(result[2])), result[1]),
+                    )
+        request_pipeline.enque_request(closure,refresh_table,"Add Service Request")
+
     styled_button(ctrl_bar, "📥  Load Dummies", load_dummies,  variant="default").pack(side="left", padx=sc(4))
     styled_button(ctrl_bar, "▶  Process Next",  process_next,  variant="default").pack(side="left", padx=sc(4))
-    styled_button(ctrl_bar, "⏩  Process All",   process_all,   variant="default").pack(side="left", padx=sc(4))
+    styled_button(ctrl_bar, "  Add Serivce",  add_service,  variant="default").pack(side="left", padx=sc(4))
     styled_button(ctrl_bar, "⟳  Refresh",       refresh_table, variant="default").pack(side="left", padx=sc(4))
 
     return page
@@ -1065,18 +1221,7 @@ def request_pipeline_caller():
     else:
         root.after(5000, request_pipeline_caller)
 
-def service_pipeline_caller():
-    global pipeline_mode
-    if pipeline_mode == "Auto":
-        while service_pipeline.buffer.get_len() > 0:
-            service_pipeline.deque_request()
-        root.after(500, service_pipeline_caller)
-    elif pipeline_mode == "Demo":
-        if service_pipeline.buffer.get_len() > 0:
-            service_pipeline.deque_request()
-        root.after(5000, service_pipeline_caller)
-    else:
-        root.after(5000, service_pipeline_caller)
+
 
 # ---------------------------------------------------------------------------
 # Root window
@@ -1120,9 +1265,7 @@ nav_items = [
     ("🗺  Navigation",     show_navigation),
     ("📅  Room Booking",   show_room_booking),
     ("🔧  Service Queue",  show_service_queue),
-    ("⚙  Requests",       show_request_processing),
-    ("✔  Completed Ops",  show_completed_operation),
-    ("★  Bonus",           show_bonus),
+    ("⚙  Requests",       show_request_processing)
 ]
 
 
@@ -1167,6 +1310,5 @@ generate_pages()
 show_page("navigation")
 _nav_btns[0].config(fg=FG_PRIMARY, bg=BG_LIGHT)
 request_pipeline_caller()
-service_pipeline_caller()
 
 root.mainloop()

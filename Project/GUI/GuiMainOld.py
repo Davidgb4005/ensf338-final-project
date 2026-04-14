@@ -6,6 +6,9 @@ import tkinter.messagebox as mb
 from datetime import date
 from datetime import datetime
 
+from pathlib import Path                   
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,6 +23,7 @@ root.geometry("600x400")
 
 
 
+MAP_PATH = PROJECT_ROOT / "GUI" / "img" / "UCalgary-Main_Campus_Map-20230724.png"
 # --- Pages ---
 pages = {}
 current_page = None
@@ -634,7 +638,7 @@ def build_nav_page(parent):
     tk.Button(dd_frame, text="Undo", command=undo).pack(side="left")
 
 
-    photo = tk.PhotoImage(file="C:\\Users\\Dave\\Documents\\ensf338-final-project\\Project\\GUI\\img\\UCalgary-Main_Campus_Map-20230724.png")
+    photo = tk.PhotoImage(file=MAP_PATH)
     img_label = tk.Label(page, image=photo)
     img_label.image = photo
     img_label.pack(pady=10)
