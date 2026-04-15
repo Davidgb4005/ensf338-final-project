@@ -33,6 +33,7 @@ class AVLTree:
         y._avl_right = z
         self._update(z)
         self._update(y)
+        print("RHS Rotate")
         return y
  
     def _rotate_left(self, z):
@@ -41,6 +42,7 @@ class AVLTree:
         y._avl_left = z
         self._update(z)
         self._update(y)
+        print("LHS Rotate")
         return y
  
     def _rebalance(self, node):
@@ -65,7 +67,7 @@ class AVLTree:
         elif node.key > root.key:
             root._avl_right = self._insert(root._avl_right, node)
         else:
-            root.data.extend(node.data)   # <-- key fix
+            root.data.extend(node.data)
             return root
 
         return self._rebalance(root)
@@ -81,35 +83,37 @@ class AVLTree:
             root._avl_right = self._delete(root._avl_right, key, obj)
 
         else:
-            for i in root.data:
-                if obj is i.data:
-                    root.data.remove(i)
+            # If obj is provided, remove only that specific entry
+            if obj is not None:
+                for i in root.data:
+                    if obj is i.data:
+                        root.data.remove(i)
+                        break
+                # Node still has other data — keep it in the tree
+                if len(root.data) > 0:
+                    return root
 
-            if len(root.data) > 0:
-                return root
-
+            # No data left (or obj is None = structural removal): remove this node
             if root._avl_left is None:
                 return root._avl_right
 
             if root._avl_right is None:
                 return root._avl_left
 
+            # Two children: replace with in-order successor
             successor = self._min_node(root._avl_right)
+            successor_key = successor.key
 
-            root._avl_right = self._delete(
-                root._avl_right,
-                successor.key,
-                successor.data[0] if successor.data else None
-            )
+            # Remove successor structurally from the right subtree
+            root._avl_right = self._delete(root._avl_right, successor_key, None)
 
             successor._avl_left = root._avl_left
             successor._avl_right = root._avl_right
             successor._avl_height = root._avl_height
-
             root = successor
 
         return self._rebalance(root)
-    
+
     def _search(self, root, key):
         if root is None or root.key == key:
             return root
@@ -132,12 +136,12 @@ class AVLTree:
         self._init(node)
         self._root = self._insert(self._root, node)
  
-    def delete(self, key,object):
-        self._root = self._delete(self._root, key,object)
+    def delete(self, key, object):
+        self._root = self._delete(self._root, key, object)
  
     def search(self, key):
-        node:Node =  self._search(self._root, key)
-        if node == None:
+        node: Node = self._search(self._root, key)
+        if node is None:
             return None
         for i in node.data:
             rb.print_daily_booking(i)
@@ -267,13 +271,11 @@ class AVLTree:
  
         ax.set_title(title, color="#adb5bd", fontsize=9, pad=6)
  
-    # ── New visualisation methods ─────────────────────────────────────────────
- 
     def insert_visu(self, node):
         fig, axes = plt.subplots(1, 3, figsize=(15, 6))
         fig.patch.set_facecolor("#0f1117")
         fig.suptitle(f"AVL Insert  ->  key = {node.key}",
-                     color="#f1f3f5", fontsize=13, fontweight="bold", y=1.01)
+                     color="#f1f3f5", fontsize=13, fontweight="bold", y=0.90)
  
         self._draw_tree(axes[0], self._root,
                         title=f"Before insert({node.key})")
@@ -296,7 +298,7 @@ class AVLTree:
         plt.tight_layout()
         plt.show()
  
-    def delete_visu(self, key,booking):
+    def delete_visu(self, key, booking):
         fig, axes = plt.subplots(1, 3, figsize=(15, 6))
         fig.patch.set_facecolor("#0f1117")
         fig.suptitle(f"AVL Delete  ->  key = {key}",
@@ -320,7 +322,7 @@ class AVLTree:
                         highlight_key=key, highlight_color="#e03131",
                         title=f"Removing node {key} ...")
  
-        self._root = self._delete(self._root, key,booking)
+        self._root = self._delete(self._root, key, booking)
  
         self._draw_tree(axes[2], self._root,
                         title=f"After rebalancing  (height={self._root._avl_height if self._root else 0})")
@@ -351,4 +353,4 @@ def hash_int_to_str(hash_val: int):
             break
         result.append(chr(char_code))
         i += 1
-    return "".join(result) 
+    return "".join(result)

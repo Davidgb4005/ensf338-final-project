@@ -240,7 +240,7 @@ def draw_graph_animated(nodes, img_path):
         fig,
         update,
         frames=len(nodes),
-        interval=300,   # ms between frames
+        interval=1000,   # ms between frames
         repeat=False
     )
 
@@ -313,5 +313,5 @@ def animate_search(nodes, steps, img_path):
 
 
 
-    ani = FuncAnimation(fig, update, frames=len(steps), interval=200, repeat=False)
+    ani = FuncAnimation(fig, update, frames=len(steps), interval=config.TRAVERSAL_SPEED, repeat=False)
     plt.show()
