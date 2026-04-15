@@ -805,7 +805,7 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
         request_pipeline.enque_request(closure, lambda: None, "Navigation Rendering")
         request_pipeline.enque_request(
             lambda: campus.campus_graph.undo_buffer.append(closure),
-            lambda: None, "Navigation Undo Enqueue",
+             None, "Navigation Undo Enqueue",
         )
 
     def animate():
@@ -813,16 +813,19 @@ def build_nav_page(parent: tk.Frame) -> tk.Frame:
         if nodes is None:
             return
         path, steps = campus.campus_graph.find_path_steps(*nodes)
-        closure = tv.animate_search(campus.campus_graph.nodes, steps, MAP_PATH)
-        request_pipeline.enque_request(closure, lambda: None, "Navigation Rendering")
-
+        closure = lambda : tv.animate_search(campus.campus_graph.nodes, steps, MAP_PATH)
+        request_pipeline.enque_request(closure, None, "Navigation Animate Rendering")
+        request_pipeline.enque_request(
+            lambda: campus.campus_graph.undo_buffer.append(closure),
+             None, "Navigation Animate Undo Enqueue",
+        )
 
     def undo():
         if campus.campus_graph.undo_buffer.items == 0:
             mb.showinfo("Navigation Error", "Undo Queue Is empty")
             return None
         request_pipeline.enque_request(
-            lambda: campus.campus_graph.undo(), lambda: None, "Navigation Undo"
+            lambda: campus.campus_graph.undo(),  None, "Navigation Undo"
         )
 
     btn_area = styled_frame(ctrl_bar, bg=BG_DARK)
@@ -859,12 +862,12 @@ def build_request_processing_page(parent: tk.Frame) -> tk.Frame:
 
     def refresh_table(*_):
         table.delete(*table.get_children())
-        tail = request_pipeline.buffer.peek_tail()
+        tail = request_pipeline.buffer.peek_head()
         i = 0
         while tail is not None:
             r = tail.val
             table_insert(table, i, (r.position, r.function, r.refresh, r.request_data))
-            tail = tail.prev
+            tail = tail.next
             i += 1
 
     def process_next():
