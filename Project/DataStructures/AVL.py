@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import BookingSystem.room_booking as rb
  
+# basic node to hold a key and its associated data
 class Node:
     def __init__(self, key, data):
         self.key = key
@@ -13,9 +14,11 @@ class AVLTree:
         self._root = None
  
     def _h(self, node):
+        # just grab the height, or 0 if there's no node
         return node._avl_height if node else 0
  
     def _bf(self, node):
+        # this calculates the balance factor
         return self._h(node._avl_left) - self._h(node._avl_right) if node else 0
  
     def _update(self, node):
@@ -154,6 +157,7 @@ class AVLTree:
         return self._min_node(self._root)
  
     def max(self):
+        # find the maximum value 
         if not self._root:
             raise ValueError("Tree is empty")
         node = self._root
@@ -335,6 +339,7 @@ class AVLTree:
  
  
 def hash_str_to_int(input_str: str):
+    # convert a string to an integer
     accumulator = 0
     norm_str = input_str.lower()
     for iteration, i in enumerate(norm_str):
@@ -343,6 +348,7 @@ def hash_str_to_int(input_str: str):
  
  
 def hash_int_to_str(hash_val: int):
+    # convert an integer hash back to a string
     result = []
     i = 0
     while hash_val > 0:

@@ -14,6 +14,8 @@ from Config import config
 BOOKING_DAYS = config.BOOKING_DAYS
 
 CAMPUS_DATA = PROJECT_ROOT / "GlobalObjects"  / "campus_data.json"
+
+# class for a room in a building
 class Room:
     def __init__(self,id,room_type):
         self.id = id
@@ -25,17 +27,20 @@ class Room:
     def get_info(self):
         return f"Room :{self.id} is of type {self.room_type}. Additional Info: {self.info}"
 
+# class for a floor in a building
 class Floor:
 
     def __init__(self,id):
         self.rooms = []
         self.id = id
 
+# class for a location on campus
 class Location:
     def __init__(self, x_position, y_position):
         self.x_position = x_position
         self.y_position = y_position
  
+ # class for a building on campus
 class Building:
     def __init__(self, name: str,bid :str, location: Location):
         self.name = name
@@ -46,12 +51,14 @@ class Building:
         self.services = []
     def get_info(self):
         return f"Building Name:{self.name} - ID:{self.bid}. Has {len(self.floors)} Floors With Avaiable Serives {self.services}"
- 
+
+# class for a campus pathway
 class Pathway:
     def __init__(self,id,location:Location):
         self.node = tv.Node(id,location.x_position,location.y_position)
         self.node = tv.Node(id,location.x_position,location.y_position)
 
+# class for the campus
 class Campus:
     def __init__(self):
         self.buildings = {}
